@@ -5,14 +5,22 @@ import { Routes, Route } from "react-router-dom";
 import Layout from "../components/Layout/Layout";
 
 // ==========================================
-// RAPPORTS
+// DASHBOARD
 // ==========================================
 
-import Rapports from "../pages/Rapports/Rapports";
-import RecetteTotale from "../pages/Rapports/RecetteTotale";
-import Statistiques from "../pages/Rapports/Statistiques";
-import RecetteParVoiture from "../pages/Rapports/RecetteParVoiture";
-import RecetteParItineraire from "../pages/Rapports/RecetteParItineraire";
+import Dashboard from "../pages/Dashboard/Dashboard";
+
+// ==========================================
+// ITINERAIRES
+// ==========================================
+
+import Itineraires from "../pages/Itineraires/Itineraires";
+
+// ==========================================
+// VOITURES
+// ==========================================
+
+import Voitures from "../pages/Voitures/Voitures";
 
 // ==========================================
 // ENVOIS
@@ -30,6 +38,20 @@ import Receptions from "../pages/Receptions/Receptions";
 import ReceptionForm from "../pages/Receptions/ReceptionForm";
 import ReceptionDetails from "../pages/Receptions/ReceptionDetails";
 
+// ==========================================
+// RAPPORTS
+// ==========================================
+
+import Rapports from "../pages/Rapports/Rapports";
+import RecetteTotale from "../pages/Rapports/RecetteTotale";
+import Statistiques from "../pages/Rapports/Statistiques";
+import RecetteParVoiture from "../pages/Rapports/RecetteParVoiture";
+import RecetteParItineraire from "../pages/Rapports/RecetteParItineraire";
+
+// ==========================================
+// ROUTES PRINCIPALES
+// ==========================================
+
 function AppRoutes() {
   return (
     <Routes>
@@ -38,6 +60,27 @@ function AppRoutes() {
       ========================================= */}
 
       <Route path="/" element={<Layout />}>
+        {/* =========================================
+            DASHBOARD
+            /
+        ========================================= */}
+
+        <Route index element={<Dashboard />} />
+
+        {/* =========================================
+            ITINERAIRES
+            /itineraires
+        ========================================= */}
+
+        <Route path="itineraires" element={<Itineraires />} />
+
+        {/* =========================================
+            VOITURES
+            /voitures
+        ========================================= */}
+
+        <Route path="voitures" element={<Voitures />} />
+
         {/* =========================================
             ENVOIS
         ========================================= */}
