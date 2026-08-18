@@ -1,8 +1,10 @@
-// src/AppRoutes.tsx
+// src/routes/AppRoutes.tsx
 
 import { Routes, Route } from "react-router-dom";
 
 import Layout from "../components/Layout/Layout";
+import Itineraires from "../pages/Itineraires/Itineraires";
+import Voitures from "../pages/Voitures/Voitures";
 
 // ==========================================
 // RAPPORTS
@@ -19,85 +21,79 @@ import RecetteParItineraire from "../pages/Rapports/RecetteParItineraire";
 // ==========================================
 
 import Envois from "../pages/Envois/Envois";
-import EnvoiForm from "../pages/Envois/EnvoiForm";
-import EnvoiDetails from "../pages/Envois/EnvoiDetails";
-
-// ==========================================
-// RECEPTIONS
-// ==========================================
-
-import Receptions from "../pages/Receptions/Receptions";
-import ReceptionForm from "../pages/Receptions/ReceptionForm";
-import ReceptionDetails from "../pages/Receptions/ReceptionDetails";
 
 function AppRoutes() {
   return (
     <Routes>
+
       {/* =========================================
           LAYOUT PRINCIPAL
       ========================================= */}
 
       <Route path="/" element={<Layout />}>
+
+        {/* =========================================
+            ITINÉRAIRES
+        ========================================= */}
+
+        <Route
+          path="itineraires"
+          element={<Itineraires />}
+        />
+
+        {/* =========================================
+            VOITURES
+        ========================================= */}
+
+        <Route
+          path="voitures"
+          element={<Voitures />}
+        />
+
         {/* =========================================
             ENVOIS
         ========================================= */}
 
-        <Route path="envois">
-          {/* /envois */}
-          <Route index element={<Envois />} />
-
-          {/* /envois/nouveau */}
-          <Route path="nouveau" element={<EnvoiForm />} />
-
-          {/* /envois/:id */}
-          <Route path=":id" element={<EnvoiDetails />} />
-
-          {/* /envois/:id/modifier */}
-          <Route path=":id/modifier" element={<EnvoiForm />} />
-        </Route>
-
-        {/* =========================================
-            RECEPTIONS
-        ========================================= */}
-
-        <Route path="receptions">
-          {/* /receptions */}
-          <Route index element={<Receptions />} />
-
-          {/* /receptions/nouveau */}
-          <Route path="nouveau" element={<ReceptionForm />} />
-
-          {/* /receptions/:id */}
-          <Route path=":id" element={<ReceptionDetails />} />
-
-          {/* /receptions/:id/modifier */}
-          <Route path=":id/modifier" element={<ReceptionForm />} />
-        </Route>
+        <Route
+          path="envois"
+          element={<Envois />}
+        />
 
         {/* =========================================
             RAPPORTS
         ========================================= */}
 
         <Route path="rapports" element={<Rapports />}>
-          {/* /rapports */}
-          <Route index element={<RecetteTotale />} />
 
-          {/* /rapports/recette */}
-          <Route path="recette" element={<RecetteTotale />} />
+          <Route
+            index
+            element={<RecetteTotale />}
+          />
 
-          {/* /rapports/statistiques */}
-          <Route path="statistiques" element={<Statistiques />} />
+          <Route
+            path="recette"
+            element={<RecetteTotale />}
+          />
 
-          {/* /rapports/voitures/:idvoit */}
-          <Route path="voitures/:idvoit" element={<RecetteParVoiture />} />
+          <Route
+            path="statistiques"
+            element={<Statistiques />}
+          />
 
-          {/* /rapports/itineraires/:codeit */}
+          <Route
+            path="voitures/:idvoit"
+            element={<RecetteParVoiture />}
+          />
+
           <Route
             path="itineraires/:codeit"
             element={<RecetteParItineraire />}
           />
+
         </Route>
+
       </Route>
+
     </Routes>
   );
 }

@@ -226,9 +226,6 @@
 
 // export default Sidebar;
 
-
-
-
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -238,6 +235,8 @@ import {
   PackageOpen,
   BarChart3,
 } from "lucide-react";
+
+import type { LucideIcon } from "lucide-react";
 
 const MENU_ITEMS = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -264,7 +263,13 @@ function Logo() {
   );
 }
 
-function NavItem({ label, path, icon: Icon }) {
+type NavItemProps = {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+};
+
+function NavItem({ label, path, icon: Icon }: NavItemProps) {
   return (
     <NavLink
       to={path}
