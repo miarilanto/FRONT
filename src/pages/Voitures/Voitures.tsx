@@ -7,7 +7,7 @@ import {
   deleteVoiture,
 } from "../../services/voiture.services";
 
-import { getItineraires } from "../../services/itineraire.services";
+import { getAllItineraires } from "../../services/itineraireApi";
 
 function Voitures() {
   const [voitures, setVoitures] = useState<any[]>([]);
@@ -51,14 +51,14 @@ function Voitures() {
   // ==========================================
 
   const chargerItineraires = async () => {
-    try {
-      const data = await getItineraires();
-      setItineraires(data);
-    } catch (err) {
-      console.error(err);
-      setError("Impossible de charger les itinéraires.");
-    }
-  };
+  try {
+    const data = await getAllItineraires();
+    setItineraires(data);
+  } catch (err) {
+    console.error(err);
+    setError("Impossible de charger les itinéraires.");
+  }
+};
 
   // ==========================================
   // Chargement initial
