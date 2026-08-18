@@ -1,31 +1,102 @@
+// src/AppRoutes.tsx
+
 import { Routes, Route } from "react-router-dom";
 
 import Layout from "../components/Layout/Layout";
 
-import Dashboard from "../pages/Dashboard/Dashboard";
-import Itineraires from "../pages/Itineraires/Itineraires";
-import Voitures from "../pages/Voitures/Voitures";
-import Envois from "../pages/Envois/Envois";
-import Receptions from "../pages/Receptions/Receptions";
+// ==========================================
+// RAPPORTS
+// ==========================================
+
 import Rapports from "../pages/Rapports/Rapports";
+import RecetteTotale from "../pages/Rapports/RecetteTotale";
+import Statistiques from "../pages/Rapports/Statistiques";
+import RecetteParVoiture from "../pages/Rapports/RecetteParVoiture";
+import RecetteParItineraire from "../pages/Rapports/RecetteParItineraire";
+
+// ==========================================
+// ENVOIS
+// ==========================================
+
+import Envois from "../pages/Envois/Envois";
+import EnvoiForm from "../pages/Envois/EnvoiForm";
+import EnvoiDetails from "../pages/Envois/EnvoiDetails";
+
+// ==========================================
+// RECEPTIONS
+// ==========================================
+
+import Receptions from "../pages/Receptions/Receptions";
+import ReceptionForm from "../pages/Receptions/ReceptionForm";
+import ReceptionDetails from "../pages/Receptions/ReceptionDetails";
 
 function AppRoutes() {
   return (
     <Routes>
+      {/* =========================================
+          LAYOUT PRINCIPAL
+      ========================================= */}
+
       <Route path="/" element={<Layout />}>
+        {/* =========================================
+            ENVOIS
+        ========================================= */}
 
-        <Route index element={<Dashboard />} />
+        <Route path="envois">
+          {/* /envois */}
+          <Route index element={<Envois />} />
 
-        <Route path="itineraires" element={<Itineraires />} />
+          {/* /envois/nouveau */}
+          <Route path="nouveau" element={<EnvoiForm />} />
 
-        <Route path="voitures" element={<Voitures />} />
+          {/* /envois/:id */}
+          <Route path=":id" element={<EnvoiDetails />} />
 
-        <Route path="envois" element={<Envois />} />
+          {/* /envois/:id/modifier */}
+          <Route path=":id/modifier" element={<EnvoiForm />} />
+        </Route>
 
-        <Route path="receptions" element={<Receptions />} />
+        {/* =========================================
+            RECEPTIONS
+        ========================================= */}
 
-        <Route path="rapports" element={<Rapports />} />
+        <Route path="receptions">
+          {/* /receptions */}
+          <Route index element={<Receptions />} />
 
+          {/* /receptions/nouveau */}
+          <Route path="nouveau" element={<ReceptionForm />} />
+
+          {/* /receptions/:id */}
+          <Route path=":id" element={<ReceptionDetails />} />
+
+          {/* /receptions/:id/modifier */}
+          <Route path=":id/modifier" element={<ReceptionForm />} />
+        </Route>
+
+        {/* =========================================
+            RAPPORTS
+        ========================================= */}
+
+        <Route path="rapports" element={<Rapports />}>
+          {/* /rapports */}
+          <Route index element={<RecetteTotale />} />
+
+          {/* /rapports/recette */}
+          <Route path="recette" element={<RecetteTotale />} />
+
+          {/* /rapports/statistiques */}
+          <Route path="statistiques" element={<Statistiques />} />
+
+          {/* /rapports/voitures/:idvoit */}
+          <Route path="voitures/:idvoit" element={<RecetteParVoiture />} />
+
+          {/* /rapports/itineraires/:codeit */}
+          <Route
+            path="itineraires/:codeit"
+            element={<RecetteParItineraire />}
+          />
+        </Route>
       </Route>
     </Routes>
   );
