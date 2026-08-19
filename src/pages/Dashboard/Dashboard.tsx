@@ -1,11 +1,37 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import {
+  LayoutDashboard,
+  RotateCcw,
+  Package,
+  PackageCheck,
+  Clock,
+  Car,
+  Route,
+  Wallet,
+  TrendingUp,
+  MapPin,
+  Filter,
+  ArrowRight,
+  ExternalLink,
+  ChevronRight,
+  AlertTriangle,
+  CheckCircle2,
+  BarChart3,
+  Truck,
+  Loader2,
+  Calendar,
+  Layers,
+} from "lucide-react";
+
 import { getDashboard } from "../../services/dashboardApi";
 
-// ==========================================
-// TYPES
-// ==========================================
+// =========================================================================
+// 1. TYPES & INTERFACES
+// =========================================================================
 
 type Periode = "today" | "7days" | "30days" | "3months" | "year";
+type TabType = "overview" | "analytics" | "fleet" | "colis";
 
 interface DashboardKpi {
   colisEnvoyes: number;
@@ -75,67 +101,260 @@ interface DashboardData {
     debut: string;
     fin: string;
   };
-
   kpi: DashboardKpi;
-
   evolutionColis: EvolutionColis[];
-
   colisParDestination: ColisDestination[];
-
   colisParItineraire: ColisItineraire[];
-
   fraisEvolution: FraisEvolution[];
-
   utilisationVoitures: UtilisationVoiture[];
-
   colisEnAttente: ColisAttente[];
-
   derniersEnvois: DernierEnvoi[];
 }
 
-// ==========================================
-// COMPOSANT
-// ==========================================
+// =========================================================================
+// 2. SOUS-COMPOSANTS MODULAIRES
+// =========================================================================
 
-function Dashboard() {
-  // ==========================================
-  // STATES
-  // ==========================================
+// --- KPI CARD ---
+interface KpiCardProps {
+  label: string;
+  value: string | number;
+  subtitle: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  highlight?: boolean;
+}
 
+function KpiCard({
+  label,
+  value,
+  subtitle,
+  icon,
+  iconBg,
+  highlight,
+}: KpiCardProps) {
+  return (
+    <div
+      className={`rounded-2xl border bg-white p-5 shadow-xs transition-all hover:shadow-md ${
+        highlight ? "border-amber-200 bg-amber-50/20" : "border-slate-200/80"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          {label}
+        </span>
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}
+        >
+          {icon}
+        </div>
+      </div>
+      <p className="mt-2 font-mono text-2xl sm:text-3xl font-black text-slate-900">
+        {value}
+      </p>
+      <span className="mt-1 block text-xs text-slate-400">{subtitle}</span>
+    </div>
+  );
+}
+
+// --- GRAPHIQUE D'ÉVOLUTION ---
+function EvolutionColisWidget({ data }: { data: EvolutionColis[] }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex h-56 items-center justify-center text-xs text-slate-400">
+        Aucune donnée d'évolution disponible.
+      </div>
+    );
+  }
+
+  const maxVal = Math.max(...data.map((d) => Math.max(d.envoyes, d.recus)), 1);
+
+  return (
+    <div className="space-y-4">
+      <div className="overflow-x-auto pb-2">
+        <div className="flex h-56 min-w-[500px] items-end gap-3 border-b border-l border-slate-200 px-4 pb-2">
+          {data.map((item) => {
+            const hEnvoyes = (item.envoyes / maxVal) * 100;
+            const hRecus = (item.recus / maxVal) * 100;
+
+            return (
+              <div
+                key={item.date}
+                className="flex h-full flex-1 flex-col justify-end items-center gap-1 group"
+              >
+                <div className="flex items-end gap-1 w-full justify-center h-full">
+                  <div
+                    className="w-3 sm:w-4 rounded-t-md bg-blue-600 transition-all group-hover:bg-blue-700"
+                    style={{ height: `${Math.max(hEnvoyes, 4)}%` }}
+                    title={`Envoyés : ${item.envoyes}`}
+                  />
+                  <div
+                    className="w-3 sm:w-4 rounded-t-md bg-emerald-500 transition-all group-hover:bg-emerald-600"
+                    style={{ height: `${Math.max(hRecus, 4)}%` }}
+                    title={`Reçus : ${item.recus}`}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 truncate w-full text-center mt-1">
+                  {item.date}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex justify-center gap-6 text-xs text-slate-600">
+        <div className="flex items-center gap-2 font-medium">
+          <span className="h-3 w-3 rounded-full bg-blue-600" />
+          Colis Envoyés
+        </div>
+        <div className="flex items-center gap-2 font-medium">
+          <span className="h-3 w-3 rounded-full bg-emerald-500" />
+          Colis Reçus
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- DESTINATIONS ---
+function DestinationWidget({ items }: { items: ColisDestination[] }) {
+  const max = Math.max(...items.map((i) => i.nombre), 1);
+
+  return (
+    <div className="space-y-3.5">
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400">Aucune destination disponible.</p>
+      ) : (
+        items.map((item) => {
+          const pct = Math.round((item.nombre / max) * 100);
+          return (
+            <div key={item.destination} className="space-y-1">
+              <div className="flex justify-between text-xs font-medium text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                  {item.destination}
+                </span>
+                <span className="font-mono font-bold text-slate-900">
+                  {item.nombre} colis
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// --- ITINÉRAIRES ---
+function ItineraireWidget({ items }: { items: ColisItineraire[] }) {
+  const max = Math.max(...items.map((i) => i.nombre), 1);
+
+  return (
+    <div className="space-y-3.5">
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400">Aucun itinéraire disponible.</p>
+      ) : (
+        items.map((item) => {
+          const pct = Math.round((item.nombre / max) * 100);
+          return (
+            <div key={item.codeit} className="space-y-1">
+              <div className="flex justify-between text-xs font-medium text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <span className="rounded-md bg-blue-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-blue-600 border border-blue-200/60">
+                    {item.codeit}
+                  </span>
+                  <span>
+                    {item.villedep} → {item.villearr}
+                  </span>
+                </span>
+                <span className="font-mono font-bold text-slate-900">
+                  {item.nombre} envois
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// --- FRAIS ÉVOLUTION ---
+function FraisWidget({ items }: { items: FraisEvolution[] }) {
+  const max = Math.max(...items.map((i) => i.total), 1);
+
+  return (
+    <div className="space-y-3.5">
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400">Aucun historique de frais.</p>
+      ) : (
+        items.map((item) => {
+          const pct = Math.round((item.total / max) * 100);
+          return (
+            <div key={item.mois} className="space-y-1">
+              <div className="flex justify-between text-xs font-medium text-slate-700">
+                <span>{item.mois}</span>
+                <span className="font-mono font-bold text-emerald-600">
+                  {Number(item.total).toLocaleString("fr-FR")} Ar
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// =========================================================================
+// 3. COMPOSANT PRINCIPAL DASHBOARD
+// =========================================================================
+
+export function Dashboard() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-
   const [periode, setPeriode] = useState<Periode>("30days");
-
   const [codeit, setCodeit] = useState("");
-
   const [idvoit, setIdvoit] = useState("");
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
 
-  // ==========================================
-  // CHARGER LE DASHBOARD
-  // ==========================================
-
+  // Charger le dashboard
   const loadDashboard = async () => {
     try {
       setLoading(true);
       setError("");
-
       const data = await getDashboard({
         periode,
         codeit: codeit || undefined,
         idvoit: idvoit || undefined,
       });
-
       setDashboard(data);
-    } catch (error) {
-      console.error("Erreur chargement dashboard :", error);
-
+    } catch (err) {
+      console.error("Erreur dashboard :", err);
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Erreur lors du chargement du dashboard",
       );
     } finally {
@@ -143,71 +362,47 @@ function Dashboard() {
     }
   };
 
-  // ==========================================
-  // CHARGEMENT AUTOMATIQUE
-  // ==========================================
-
   useEffect(() => {
     loadDashboard();
   }, [periode, codeit, idvoit]);
 
-  // ==========================================
-  // ACTUALISER
-  // ==========================================
-
-  const handleRefresh = async () => {
-    await loadDashboard();
+  // Formatters
+  const formatNumber = (val: number) =>
+    new Intl.NumberFormat("fr-FR").format(val);
+  const formatMoney = (val: number) =>
+    `${new Intl.NumberFormat("fr-FR").format(val)} Ar`;
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString("fr-FR");
   };
 
-  // ==========================================
-  // FORMATAGE
-  // ==========================================
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat("fr-FR").format(value);
-  };
-
-  const formatMoney = (value: number) => {
-    return `${new Intl.NumberFormat("fr-FR").format(value)} Ar`;
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("fr-FR");
-  };
-
-  // ==========================================
-  // LOADING INITIAL
-  // ==========================================
-
+  // État de chargement initial
   if (loading && !dashboard) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
-
-            <p className="text-slate-500">Chargement du dashboard...</p>
-          </div>
-        </div>
+      <div className="flex min-h-[500px] flex-col items-center justify-center gap-3">
+        <Loader2 className="h-9 w-9 animate-spin text-blue-600" />
+        <p className="text-sm font-medium text-slate-500">
+          Chargement du tableau de bord...
+        </p>
       </div>
     );
   }
 
-  // ==========================================
-  // ERREUR
-  // ==========================================
-
+  // État d'erreur
   if (!dashboard) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-          <p className="font-medium text-red-700">
-            {error || "Impossible de charger le dashboard."}
+      <div className="p-6">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-700 shadow-xs">
+          <AlertTriangle className="h-10 w-10 text-red-500 mb-3" />
+          <h3 className="text-base font-bold">
+            Impossible de charger le tableau de bord
+          </h3>
+          <p className="text-xs text-red-600 mt-1">
+            {error || "Erreur de connexion serveur."}
           </p>
-
           <button
-            onClick={handleRefresh}
-            className="mt-4 rounded-lg bg-red-600 px-5 py-2.5 font-medium text-white hover:bg-red-700"
+            onClick={loadDashboard}
+            className="mt-4 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-red-700 active:scale-95 transition-all shadow-sm"
           >
             Réessayer
           </button>
@@ -215,10 +410,6 @@ function Dashboard() {
       </div>
     );
   }
-
-  // ==========================================
-  // DONNÉES DU BACKEND
-  // ==========================================
 
   const {
     kpi,
@@ -231,133 +422,100 @@ function Dashboard() {
     derniersEnvois,
   } = dashboard;
 
-  // ==========================================
-  // MAX POUR LES BARRES
-  // ==========================================
-
-  const maxDestination = Math.max(
-    ...colisParDestination.map((item) => item.nombre),
-    1,
-  );
-
-  const maxItineraire = Math.max(
-    ...colisParItineraire.map((item) => item.nombre),
-    1,
-  );
-
   const maxVoiture = Math.max(
     ...utilisationVoitures.map((item) => item.nombreEnvois),
     1,
   );
 
-  const maxFrais = Math.max(...fraisEvolution.map((item) => item.total), 1);
-
-  // ==========================================
-  // INTERFACE
-  // ==========================================
-
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      {/* ========================================
-          HEADER
-      ======================================== */}
-
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">Dashboard</h1>
-
-          <p className="mt-1 text-slate-500">
-            Vue d'ensemble de la gestion des colis
-          </p>
+    <div className="w-full space-y-6 p-4 md:p-6">
+      {/* =====================================================
+          1. HEADER BANNER
+      ====================================================== */}
+      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:p-6">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner">
+            <LayoutDashboard className="h-6 w-6" strokeWidth={2} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Tableau de bord logistique
+            </h1>
+            <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
+              Vue synthétique et indicateurs clés de performance
+            </p>
+          </div>
         </div>
 
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          🔄 Actualiser
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={loadDashboard}
+            disabled={loading}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-95 disabled:opacity-50 transition-all"
+          >
+            <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span>Actualiser</span>
+          </button>
+        </div>
       </div>
 
-      {/* ========================================
-          FILTRES
-      ======================================== */}
-
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="font-semibold text-slate-800">Filtres</h2>
-
-          <p className="text-sm text-slate-500">
-            Filtrer les statistiques du dashboard
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {/* PÉRIODE */}
-
+      {/* =====================================================
+          2. FILTRES EN RUBAN COMPACT
+      ====================================================== */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Période */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-600">
+            <label className="mb-1.5 block text-xs font-bold text-slate-600">
               Période
             </label>
-
             <select
               value={periode}
               onChange={(e) => setPeriode(e.target.value as Periode)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
             >
               <option value="today">Aujourd'hui</option>
-
               <option value="7days">7 derniers jours</option>
-
               <option value="30days">30 derniers jours</option>
-
               <option value="3months">3 derniers mois</option>
-
               <option value="year">Cette année</option>
             </select>
           </div>
 
-          {/* ITINÉRAIRE */}
-
+          {/* Itinéraire */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-600">
+            <label className="mb-1.5 block text-xs font-bold text-slate-600">
               Itinéraire
             </label>
-
             <select
               value={codeit}
               onChange={(e) => setCodeit(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
             >
               <option value="">Tous les itinéraires</option>
-
-              {colisParItineraire.map((itineraire) => (
-                <option key={itineraire.codeit} value={itineraire.codeit}>
-                  {itineraire.codeit} - {itineraire.villedep} →{" "}
-                  {itineraire.villearr}
+              {colisParItineraire.map((it) => (
+                <option key={it.codeit} value={it.codeit}>
+                  {it.codeit} ({it.villedep} → {it.villearr})
                 </option>
               ))}
             </select>
           </div>
 
-          {/* VOITURE */}
-
+          {/* Voiture */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-600">
-              Voiture
+            <label className="mb-1.5 block text-xs font-bold text-slate-600">
+              Véhicule
             </label>
-
             <select
               value={idvoit}
               onChange={(e) => setIdvoit(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
             >
               <option value="">Toutes les voitures</option>
-
-              {utilisationVoitures.map((voiture) => (
-                <option key={voiture.idvoit} value={voiture.idvoit}>
-                  {voiture.design} ({voiture.idvoit})
+              {utilisationVoitures.map((v) => (
+                <option key={v.idvoit} value={v.idvoit}>
+                  {v.design} ({v.idvoit})
                 </option>
               ))}
             </select>
@@ -365,594 +523,478 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ========================================
-          KPI
-      ======================================== */}
-
-      <div className="mb-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {/* COLIS ENVOYÉS */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Colis envoyés</p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-800">
-                {formatNumber(kpi.colisEnvoyes)}
-              </p>
-            </div>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl">
-              📦
-            </div>
-          </div>
-
-          <p className="mt-3 text-sm text-slate-500">Sur la période</p>
-        </div>
-
-        {/* COLIS REÇUS */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Colis reçus</p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-800">
-                {formatNumber(kpi.colisRecus)}
-              </p>
-            </div>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-2xl">
-              📬
-            </div>
-          </div>
-
-          <p className="mt-3 text-sm text-slate-500">Colis réceptionnés</p>
-        </div>
-
-        {/* EN ATTENTE */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Colis en attente</p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-800">
-                {formatNumber(kpi.colisAttente)}
-              </p>
-            </div>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-100 text-2xl">
-              ⏳
-            </div>
-          </div>
-
-          <p className="mt-3 text-sm text-orange-600">À surveiller</p>
-        </div>
-
-        {/* VOITURES */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Voitures</p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-800">
-                {formatNumber(kpi.voitures)}
-              </p>
-            </div>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-2xl">
-              🚗
-            </div>
-          </div>
-
-          <p className="mt-3 text-sm text-slate-500">Flotte enregistrée</p>
-        </div>
-
-        {/* ITINÉRAIRES */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Itinéraires</p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-800">
-                {formatNumber(kpi.itineraires)}
-              </p>
-            </div>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl">
-              🛣️
-            </div>
-          </div>
-
-          <p className="mt-3 text-sm text-slate-500">Itinéraires enregistrés</p>
-        </div>
-
-        {/* FRAIS */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total frais</p>
-
-              <p className="mt-2 text-2xl font-bold text-slate-800">
-                {formatMoney(kpi.totalFrais)}
-              </p>
-            </div>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-2xl">
-              💰
-            </div>
-          </div>
-
-          <p className="mt-3 text-sm text-slate-500">Frais d'envoi</p>
-        </div>
+      {/* =====================================================
+          3. 6 CARTES KPI PRINCIPALES
+      ====================================================== */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <KpiCard
+          label="Colis Envoyés"
+          value={formatNumber(kpi.colisEnvoyes)}
+          subtitle="Sur la période"
+          icon={<Package className="h-5 w-5 text-indigo-600" />}
+          iconBg="bg-indigo-50"
+        />
+        <KpiCard
+          label="Colis Reçus"
+          value={formatNumber(kpi.colisRecus)}
+          subtitle="Réceptions finalisées"
+          icon={<PackageCheck className="h-5 w-5 text-emerald-600" />}
+          iconBg="bg-emerald-50"
+        />
+        <KpiCard
+          label="En Attente"
+          value={formatNumber(kpi.colisAttente)}
+          subtitle="À surveiller"
+          icon={<Clock className="h-5 w-5 text-amber-600" />}
+          iconBg="bg-amber-50"
+          highlight={kpi.colisAttente > 0}
+        />
+        <KpiCard
+          label="Flotte Active"
+          value={formatNumber(kpi.voitures)}
+          subtitle="Véhicules mobilisés"
+          icon={<Car className="h-5 w-5 text-sky-600" />}
+          iconBg="bg-sky-50"
+        />
+        <KpiCard
+          label="Itinéraires"
+          value={formatNumber(kpi.itineraires)}
+          subtitle="Lignes régulières"
+          icon={<Route className="h-5 w-5 text-purple-600" />}
+          iconBg="bg-purple-50"
+        />
+        <KpiCard
+          label="Total Frais"
+          value={formatMoney(kpi.totalFrais)}
+          subtitle="Recette perçue"
+          icon={<Wallet className="h-5 w-5 text-blue-600" />}
+          iconBg="bg-blue-50"
+        />
       </div>
 
-      {/* ========================================
-          ÉVOLUTION + DESTINATION
-      ======================================== */}
-
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* ÉVOLUTION */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-800">
-              📈 Évolution des colis
-            </h2>
-
-            <p className="text-sm text-slate-500">
-              Nombre de colis envoyés et reçus
-            </p>
-          </div>
-
-          {evolutionColis.length === 0 ? (
-            <div className="flex h-64 items-center justify-center text-slate-500">
-              Aucune donnée disponible.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="flex h-64 min-w-[600px] items-end gap-4 border-b border-l border-slate-200 px-5">
-                {evolutionColis.map((item) => {
-                  const max = Math.max(item.envoyes, item.recus, 1);
-
-                  const envoyesHeight = (item.envoyes / max) * 100;
-
-                  const recusHeight = (item.recus / max) * 100;
-
-                  return (
-                    <div
-                      key={item.date}
-                      className="flex h-full flex-1 items-end justify-center gap-1"
-                    >
-                      <div
-                        className="w-5 rounded-t bg-blue-500"
-                        style={{
-                          height: `${envoyesHeight}%`,
-                        }}
-                        title={`Envoyés : ${item.envoyes}`}
-                      />
-
-                      <div
-                        className="w-5 rounded-t bg-green-500"
-                        style={{
-                          height: `${recusHeight}%`,
-                        }}
-                        title={`Reçus : ${item.recus}`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-5 flex justify-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-blue-500" />
-              Envoyés
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-green-500" />
-              Reçus
-            </div>
-          </div>
-        </div>
-
-        {/* DESTINATIONS */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800">
-            📍 Colis par destination
-          </h2>
-
-          <p className="mb-6 text-sm text-slate-500">
-            Répartition des destinations
-          </p>
-
-          <div className="space-y-5">
-            {colisParDestination.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Aucune donnée disponible.
-              </p>
-            ) : (
-              colisParDestination.map((item) => {
-                const width = (item.nombre / maxDestination) * 100;
-
-                return (
-                  <div key={item.destination}>
-                    <div className="mb-2 flex justify-between text-sm">
-                      <span>{item.destination}</span>
-
-                      <strong>{item.nombre}</strong>
-                    </div>
-
-                    <div className="h-3 rounded-full bg-slate-100">
-                      <div
-                        className="h-3 rounded-full bg-blue-500"
-                        style={{
-                          width: `${width}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================
-          ITINÉRAIRES + FRAIS
-      ======================================== */}
-
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* ITINÉRAIRES */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-800">
-              🛣️ Colis par itinéraire
-            </h2>
-
-            <p className="text-sm text-slate-500">
-              Itinéraires les plus utilisés
-            </p>
-          </div>
-
-          <div className="space-y-5">
-            {colisParItineraire.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Aucune donnée disponible.
-              </p>
-            ) : (
-              colisParItineraire.map((item) => {
-                const width = (item.nombre / maxItineraire) * 100;
-
-                return (
-                  <div key={item.codeit}>
-                    <div className="mb-2 flex justify-between gap-3 text-sm">
-                      <span>
-                        <strong>{item.codeit}</strong> — {item.villedep} →{" "}
-                        {item.villearr}
-                      </span>
-
-                      <strong>{item.nombre}</strong>
-                    </div>
-
-                    <div className="h-3 rounded-full bg-slate-100">
-                      <div
-                        className="h-3 rounded-full bg-blue-500"
-                        style={{
-                          width: `${width}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* FRAIS */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-start justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">
-                💰 Frais générés
-              </h2>
-
-              <p className="text-sm text-slate-500">
-                Évolution des frais d'envoi
-              </p>
-            </div>
-
-            <span className="text-xl font-bold text-slate-800">
-              {formatMoney(kpi.totalFrais)}
-            </span>
-          </div>
-
-          <div className="space-y-5">
-            {fraisEvolution.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Aucune donnée disponible.
-              </p>
-            ) : (
-              fraisEvolution.map((item) => {
-                const width = (item.total / maxFrais) * 100;
-
-                return (
-                  <div key={item.mois}>
-                    <div className="mb-2 flex justify-between text-sm">
-                      <span>{item.mois}</span>
-
-                      <span>{formatMoney(item.total)}</span>
-                    </div>
-
-                    <div className="h-3 rounded-full bg-slate-100">
-                      <div
-                        className="h-3 rounded-full bg-purple-500"
-                        style={{
-                          width: `${width}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================
-          UTILISATION DES VOITURES
-      ======================================== */}
-
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-slate-800">
-            🚗 Utilisation des voitures
-          </h2>
-
-          <p className="text-sm text-slate-500">
-            Nombre d'envois effectués par voiture
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {utilisationVoitures.length === 0 ? (
-            <p className="text-sm text-slate-500">Aucune voiture trouvée.</p>
-          ) : (
-            utilisationVoitures.map((voiture) => {
-              const width = (voiture.nombreEnvois / maxVoiture) * 100;
-
-              return (
-                <div
-                  key={voiture.idvoit}
-                  className="rounded-xl bg-slate-50 p-4"
-                >
-                  <div className="mb-3">
-                    <p className="font-semibold text-slate-800">
-                      🚗 {voiture.design}
-                    </p>
-
-                    <p className="mt-1 text-xs text-slate-400">
-                      ID : {voiture.idvoit}
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      {voiture.itineraire || "Aucun itinéraire"}
-                    </p>
-                  </div>
-
-                  <p className="text-2xl font-bold text-slate-800">
-                    {voiture.nombreEnvois}
-                  </p>
-
-                  <p className="text-sm text-slate-500">envois</p>
-
-                  <div className="mt-3 h-2 rounded-full bg-slate-200">
-                    <div
-                      className="h-2 rounded-full bg-blue-500"
-                      style={{
-                        width: `${width}%`,
-                      }}
-                    />
-                  </div>
-
-                  <p className="mt-2 text-right text-xs text-slate-500">
-                    {Math.round(width)} %
-                  </p>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* ========================================
-          COLIS EN ATTENTE
-      ======================================== */}
-
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b px-6 py-5">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">
-              ⚠️ Colis en attente
-            </h2>
-
-            <p className="text-sm text-slate-500">
-              Colis envoyés mais pas encore reçus
-            </p>
-          </div>
-
-          <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-700">
-            {kpi.colisAttente}
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">
-                  N°
-                </th>
-
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">
-                  Colis
-                </th>
-
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">
-                  Expéditeur
-                </th>
-
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">
-                  Itinéraire
-                </th>
-
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">
-                  Voiture
-                </th>
-
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">
-                  Date
-                </th>
-
-                <th className="px-6 py-4 text-center text-xs font-semibold uppercase text-slate-500">
-                  Statut
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100">
-              {colisEnAttente.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-6 py-10 text-center text-slate-500"
-                  >
-                    Aucun colis en attente.
-                  </td>
-                </tr>
-              ) : (
-                colisEnAttente.map((colis) => (
-                  <tr key={colis.idenvoi} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 font-semibold text-slate-800">
-                      N°{colis.idenvoi}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-600">{colis.colis}</td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {colis.nomEnvoyeur}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {colis.itineraire || "Inconnue"}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {colis.voiture}
-                    </td>
-
-                    <td className="px-6 py-4 text-slate-600">
-                      {formatDate(colis.date_envoi)}
-                    </td>
-
-                    <td className="px-6 py-4 text-center">
-                      <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
-                        ⏳ En attente
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ========================================
-          DERNIERS ENVOIS
-      ======================================== */}
-
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b px-6 py-5">
-          <h2 className="text-lg font-bold text-slate-800">
-            📦 Derniers envois
-          </h2>
-
-          <p className="text-sm text-slate-500">Activité récente</p>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {derniersEnvois.length === 0 ? (
-            <div className="px-6 py-10 text-center text-slate-500">
-              Aucun envoi trouvé.
-            </div>
-          ) : (
-            derniersEnvois.map((envoi) => (
-              <div
-                key={envoi.idenvoi}
-                className="flex flex-col gap-4 px-6 py-5 hover:bg-slate-50 md:flex-row md:items-center md:justify-between"
+      {/* =====================================================
+          4. ONGLET DE NAVIGATION (ÉVITE LE SCROLL INFINI)
+      ====================================================== */}
+      <div className="flex border-b border-slate-200 bg-white px-3 pt-2 rounded-t-2xl shadow-xs">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "overview", label: "Vue d'ensemble", icon: Layers },
+            {
+              id: "analytics",
+              label: "Analyses & Graphiques",
+              icon: BarChart3,
+            },
+            { id: "fleet", label: "Flotte & Lignes", icon: Truck },
+            { id: "colis", label: "Suivi des Colis", icon: Package },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as TabType)}
+                className={`flex cursor-pointer items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold transition-all ${
+                  active
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                }`}
               >
-                <div className="flex items-center gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-xl">
-                    📦
-                  </div>
-
-                  <div>
-                    <p className="font-semibold text-slate-800">
-                      Envoi N°{envoi.idenvoi}
-                    </p>
-
-                    <p className="text-sm text-slate-500">
-                      {envoi.colis}
-                      {" • "}
-                      {envoi.nomEnvoyeur}
-                    </p>
-
-                    <p className="text-xs text-slate-400">
-                      {envoi.itineraire || "Itinéraire inconnu"}
-                      {" • "}
-                      {envoi.voiture}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-left md:text-right">
-                  <p className="font-semibold text-slate-800">
-                    {formatMoney(envoi.frais)}
-                  </p>
-
-                  <p className="text-xs text-slate-500">
-                    {formatDate(envoi.date_envoi)}
-                  </p>
-
-                  <span
-                    className={`mt-1 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                      envoi.statut === "Reçu"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {envoi.statut}
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
+                <Icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* =====================================================
+          5. CONTENU SELON L'ONGLET SÉLECTIONNÉ
+      ====================================================== */}
+
+      {/* --- ONGLET 1 : VUE D'ENSEMBLE --- */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* Évolution (2 cols) */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs lg:col-span-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Évolution des flux de colis
+                  </h3>
+                </div>
+                <Link
+                  to="/rapports/statistiques"
+                  className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  <span>Détails</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+              <EvolutionColisWidget data={evolutionColis} />
+            </div>
+
+            {/* Top Destinations (1 col) */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-indigo-600" />
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Top Destinations
+                  </h3>
+                </div>
+                <Link
+                  to="/itineraires"
+                  className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  <span>Tous</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+              <DestinationWidget items={colisParDestination.slice(0, 5)} />
+            </div>
+          </div>
+
+          {/* Résumé des derniers colis et alertes */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Colis en attente */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Colis en attente ({kpi.colisAttente})
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("colis")}
+                  className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  <span>Voir la liste</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100 text-xs">
+                {colisEnAttente.slice(0, 4).map((c) => (
+                  <div
+                    key={c.idenvoi}
+                    className="py-2.5 flex items-center justify-between"
+                  >
+                    <div>
+                      <span className="font-semibold text-slate-800">
+                        Envoi #{c.idenvoi} — {c.colis}
+                      </span>
+                      <p className="text-slate-400 text-[11px]">
+                        {c.nomEnvoyeur} • {c.voiture}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-amber-50 px-2.5 py-0.5 font-semibold text-amber-700 border border-amber-200 text-[10px]">
+                      En attente
+                    </span>
+                  </div>
+                ))}
+                {colisEnAttente.length === 0 && (
+                  <p className="text-center py-6 text-slate-400">
+                    Aucun colis en attente.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Derniers envois */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-indigo-600" />
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Dernières expéditions
+                  </h3>
+                </div>
+                <Link
+                  to="/receptions"
+                  className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  <span>Réceptions</span>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+
+              <div className="divide-y divide-slate-100 text-xs">
+                {derniersEnvois.slice(0, 4).map((e) => (
+                  <div
+                    key={e.idenvoi}
+                    className="py-2.5 flex items-center justify-between"
+                  >
+                    <div>
+                      <span className="font-semibold text-slate-800">
+                        {e.colis}
+                      </span>
+                      <p className="text-slate-400 text-[11px]">
+                        Envoi #{e.idenvoi} • {e.nomEnvoyeur}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-bold text-slate-800">
+                        {formatMoney(e.frais)}
+                      </span>
+                      <p className="text-[10px] text-slate-400">
+                        {formatDate(e.date_envoi)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {derniersEnvois.length === 0 && (
+                  <p className="text-center py-6 text-slate-400">
+                    Aucun envoi récent.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ONGLET 2 : ANALYSES & GRAPHIQUES --- */}
+      {activeTab === "analytics" && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Top Itinéraires */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Route className="h-4 w-4 text-purple-600" />
+                <h3 className="text-sm font-bold text-slate-800">
+                  Fréquentation des Itinéraires
+                </h3>
+              </div>
+              <Link
+                to="/rapports/itineraires/IT001"
+                className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
+                <span>Rapport Itinéraires</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <ItineraireWidget items={colisParItineraire} />
+          </div>
+
+          {/* Frais générés */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-emerald-600" />
+                <h3 className="text-sm font-bold text-slate-800">
+                  Évolution des Recettes (Frais)
+                </h3>
+              </div>
+              <Link
+                to="/rapports/recette"
+                className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
+                <span>Recette totale</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <FraisWidget items={fraisEvolution} />
+          </div>
+        </div>
+      )}
+
+      {/* --- ONGLET 3 : FLOTTE & LIGNES --- */}
+      {activeTab === "fleet" && (
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Car className="h-4 w-4 text-sky-600" />
+                <h3 className="text-sm font-bold text-slate-800">
+                  Taux d'utilisation des véhicules
+                </h3>
+              </div>
+              <Link
+                to="/rapports/voitures/V001"
+                className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
+                <span>Rapport par véhicule</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {utilisationVoitures.map((v) => {
+                const pct = Math.round((v.nombreEnvois / maxVoiture) * 100);
+                return (
+                  <div
+                    key={v.idvoit}
+                    className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-blue-600">
+                        {v.idvoit}
+                      </span>
+                      <span className="font-mono text-xs font-bold text-slate-700">
+                        {v.nombreEnvois} envois
+                      </span>
+                    </div>
+                    <p className="font-semibold text-slate-800 text-sm mt-1">
+                      {v.design}
+                    </p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {v.itineraire || "Aucun trajet"}
+                    </p>
+
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-right text-[10px] font-bold text-slate-500">
+                      {pct}% d'activité
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ONGLET 4 : SUIVI DES COLIS --- */}
+      {activeTab === "colis" && (
+        <div className="space-y-6">
+          {/* Table complète des colis en attente */}
+          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <h3 className="text-sm font-bold text-slate-800">
+                  Colis en attente de livraison
+                </h3>
+              </div>
+              <Link
+                to="/receptions"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
+                <span>Aller aux réceptions</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 uppercase">
+                  <tr>
+                    <th className="px-4 py-3">Réf</th>
+                    <th className="px-4 py-3">Colis</th>
+                    <th className="px-4 py-3">Expéditeur</th>
+                    <th className="px-4 py-3">Trajet</th>
+                    <th className="px-4 py-3">Véhicule</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3 text-center">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {colisEnAttente.map((colis) => (
+                    <tr key={colis.idenvoi} className="hover:bg-slate-50/80">
+                      <td className="px-4 py-3 font-mono font-bold text-blue-600">
+                        #{colis.idenvoi}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        {colis.colis}
+                      </td>
+                      <td className="px-4 py-3">{colis.nomEnvoyeur}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500">
+                        {colis.itineraire || "Non défini"}
+                      </td>
+                      <td className="px-4 py-3">{colis.voiture}</td>
+                      <td className="px-4 py-3 text-slate-500">
+                        {formatDate(colis.date_envoi)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200">
+                          <Clock className="h-3 w-3" />
+                          En attente
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {colisEnAttente.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="text-center py-8 text-slate-400"
+                      >
+                        Aucun colis en attente.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Liste détaillée des derniers envois */}
+          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-800">
+                  Historique récent des envois
+                </h3>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100 text-xs sm:text-sm">
+              {derniersEnvois.map((envoi) => (
+                <div
+                  key={envoi.idenvoi}
+                  className="flex flex-col gap-3 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                      <Package className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900">{envoi.colis}</p>
+                      <p className="text-xs text-slate-500">
+                        Envoi #{envoi.idenvoi} • Expéditeur :{" "}
+                        <span className="font-medium text-slate-700">
+                          {envoi.nomEnvoyeur}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {envoi.itineraire || "Ligne standard"} • {envoi.voiture}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1">
+                    <span className="font-mono text-sm font-bold text-slate-900">
+                      {formatMoney(envoi.frais)}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {formatDate(envoi.date_envoi)}
+                    </span>
+                    <span
+                      className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold border ${
+                        envoi.statut === "Reçu"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}
+                    >
+                      {envoi.statut}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

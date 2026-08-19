@@ -1,13 +1,18 @@
 import React from "react";
 import {
   Package,
-  ClipboardList,
   Truck,
   MapPin,
+  Mail,
+  Phone,
+  CalendarDays,
+  CircleDollarSign,
   X,
   CheckCircle2,
-  AlertTriangle,
+  User,
+  ArrowRight,
 } from "lucide-react";
+
 import type { Reception } from "./types";
 
 interface ReceptionDetailsProps {
@@ -15,12 +20,15 @@ interface ReceptionDetailsProps {
   onClose: () => void;
 }
 
-const formatDate = (date: string) => {
-  const parsedDate = new Date(date);
+// ======================================================
+// FORMATTEURS
+// ======================================================
 
-  if (isNaN(parsedDate.getTime())) {
-    return date;
-  }
+const formatDate = (date: string | Date | undefined) => {
+  if (!date) return "Non renseignée";
+
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return String(date);
 
   return parsedDate.toLocaleString("fr-FR", {
     day: "2-digit",
@@ -31,191 +39,260 @@ const formatDate = (date: string) => {
   });
 };
 
-/* --------------------------------------------------------------------- */
-/* Sous-composants                                                       */
-/* --------------------------------------------------------------------- */
+const formatFrais = (frais: number | string | undefined) => {
+  if (frais === undefined || frais === null || frais === "") {
+    return "Non renseigné";
+  }
+  return `${Number(frais).toLocaleString("fr-FR")} Ar`;
+};
 
-interface InfoCardProps {
+// ======================================================
+// SOUS-COMPOSANT : CELLULE D'INFORMATION COMPACTE
+// ======================================================
+
+interface InfoItemProps {
   label: string;
   value: React.ReactNode;
-  emphasis?: boolean;
+  icon?: React.ReactNode;
+  highlight?: boolean;
 }
 
-function InfoCard({ label, value, emphasis }: InfoCardProps) {
+function InfoItem({ label, value, icon, highlight }: InfoItemProps) {
   return (
-    <div className="bg-base-100 rounded-lg p-3">
-      <p className="text-xs opacity-60">{label}</p>
-      <p className={emphasis ? "font-bold text-lg" : "font-semibold"}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-interface SectionProps {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}
-
-function Section({ icon, title, children }: SectionProps) {
-  return (
-    <div className="card bg-base-200 border border-base-300">
-      <div className="card-body p-4">
-        <div className="flex items-center gap-2 mb-3">
+    <div
+      className={`flex items-start gap-2.5 rounded-lg border p-2.5 transition-colors ${
+        highlight
+          ? "border-blue-200 bg-blue-50/50"
+          : "border-slate-200/80 bg-white"
+      }`}
+    >
+      {icon && (
+        <div
+          className={`mt-0.5 shrink-0 ${
+            highlight ? "text-blue-600" : "text-slate-400"
+          }`}
+        >
           {icon}
-          <h4 className="font-bold">{title}</h4>
         </div>
-
-        {children}
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <div className="truncate text-sm font-semibold text-slate-800">
+          {value}
+        </div>
       </div>
     </div>
   );
 }
 
-/* --------------------------------------------------------------------- */
-/* Composant principal                                                   */
-/* --------------------------------------------------------------------- */
+// ======================================================
+// COMPOSANT PRINCIPAL
+// ======================================================
 
 const ReceptionDetails: React.FC<ReceptionDetailsProps> = ({
   reception,
   onClose,
 }) => {
-  if (!reception) {
-    return null;
-  }
+  if (!reception) return null;
 
-  const envoyer = reception.envoyer;
-  const voiture = envoyer?.voiture;
+  const envoi = reception.envoyer;
+  const voiture = envoi?.voiture;
   const itineraire = voiture?.itineraire;
 
   return (
-    <dialog open className="modal modal-middle">
-      <div className="modal-box max-w-4xl p-0 overflow-hidden">
-        {/* Header */}
-        <div className="bg-primary text-primary-content px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="bg-primary-content/20 rounded-xl p-3">
-                <Package className="h-6 w-6" strokeWidth={2} />
+    <dialog
+      open
+      className="modal modal-open modal-middle bg-slate-900/40 backdrop-blur-xs z-50"
+    >
+      <div className="modal-box max-w-4xl w-11/12 p-0 overflow-hidden bg-slate-50 shadow-2xl rounded-2xl border border-slate-200">
+        {/* ================= HEADER COMPACT ================= */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3.5 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-white/20 p-2 text-white">
+              <Package className="h-5 w-5" strokeWidth={2} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold leading-tight">
+                Détails de la réception
+              </h3>
+              <p className="text-xs text-blue-100">
+                Colis :{" "}
+                <span className="font-semibold text-white">
+                  {envoi?.colis || "Non renseigné"}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-semibold text-white shadow-xs">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Réceptionnée
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-ghost btn-xs btn-circle text-white/80 hover:bg-white/20 hover:text-white"
+              aria-label="Fermer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* ================= CONTENU (GRID 2 COLONNES) ================= */}
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {/* COLONNE GAUCHE : COLIS & ACTEURS */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-2.5">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+              <Package className="h-4 w-4 text-blue-600" />
+              Informations du Colis & Envoi
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <InfoItem
+                label="Nom du Colis"
+                value={envoi?.colis || "Non renseigné"}
+                icon={<Package className="h-4 w-4" />}
+                highlight
+              />
+              <InfoItem
+                label="Frais d'envoi"
+                value={
+                  <span className="text-emerald-700">
+                    {formatFrais(envoi?.frais)}
+                  </span>
+                }
+                icon={<CircleDollarSign className="h-4 w-4 text-emerald-600" />}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <InfoItem
+                label="Envoyeur"
+                value={envoi?.nomEnvoyeur || "Non renseigné"}
+                icon={<User className="h-4 w-4" />}
+              />
+              <InfoItem
+                label="Email Envoyeur"
+                value={envoi?.emailEnvoyeur || "Non renseigné"}
+                icon={<Mail className="h-4 w-4" />}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <InfoItem
+                label="Destinataire"
+                value={envoi?.nomRecepteur || "Non renseigné"}
+                icon={<User className="h-4 w-4" />}
+              />
+              <InfoItem
+                label="Contact Récepteur"
+                value={envoi?.contactRecepteur || "Non renseigné"}
+                icon={<Phone className="h-4 w-4" />}
+              />
+            </div>
+
+            <InfoItem
+              label="Date d'envoi"
+              value={formatDate(envoi?.date_envoi)}
+              icon={<CalendarDays className="h-4 w-4" />}
+            />
+          </div>
+
+          {/* COLONNE DROITE : RÉCEPTION & TRANSPORT */}
+          <div className="space-y-3">
+            {/* BLOC RÉCEPTION */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-2">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Statut de Réception
               </div>
 
-              <div>
-                <h3 className="text-xl font-bold">Détails de la réception</h3>
-
-                <p className="text-sm opacity-80">
-                  Informations sur le colis réceptionné
-                </p>
+              <div className="grid grid-cols-2 gap-2">
+                <InfoItem
+                  label="Date de réception"
+                  value={formatDate(reception.date_recept)}
+                  icon={<CalendarDays className="h-4 w-4 text-emerald-600" />}
+                  highlight
+                />
+                <InfoItem
+                  label="État"
+                  value={
+                    <span className="text-emerald-600 font-bold">
+                      Réceptionnée
+                    </span>
+                  }
+                  icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                />
               </div>
             </div>
 
-            <div className="badge badge-success badge-lg gap-1">
-              <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
-              Réceptionnée
+            {/* BLOC TRANSPORT */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-2">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <Truck className="h-4 w-4 text-indigo-600" />
+                Transport & Acheminement
+              </div>
+
+              {voiture ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <InfoItem
+                      label="Véhicule"
+                      value={
+                        <span>
+                          {voiture.design}{" "}
+                          <span className="text-xs text-slate-400 font-normal">
+                            ({voiture.idvoit})
+                          </span>
+                        </span>
+                      }
+                      icon={<Truck className="h-4 w-4" />}
+                    />
+                    <InfoItem
+                      label="Code Itinéraire"
+                      value={itineraire?.codeit || "Non spécifié"}
+                      icon={<MapPin className="h-4 w-4" />}
+                    />
+                  </div>
+
+                  {itineraire && (
+                    <div className="flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50/50 px-3 py-2 text-xs">
+                      <span className="font-semibold text-slate-700">
+                        {itineraire.villedep}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 text-indigo-500" />
+                      <span className="font-semibold text-slate-700">
+                        {itineraire.villearr}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-700 border border-amber-200">
+                  Aucune information de transport liée.
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Contenu */}
-        <div className="p-5 space-y-4">
-          {/* Informations réception */}
-          <Section
-            icon={<ClipboardList className="h-5 w-5" strokeWidth={2} />}
-            title="Informations de réception"
+        {/* ================= FOOTER COMPACT ================= */}
+        <div className="flex justify-end border-t border-slate-200 bg-white px-5 py-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-slate-800 px-4 py-1.5 text-sm font-medium text-white shadow-xs transition hover:bg-slate-700 focus:outline-hidden"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <InfoCard
-                label="Date de réception"
-                value={formatDate(reception.date_recept)}
-              />
-
-              <InfoCard
-                label="Statut"
-                value={<span className="text-success">Réceptionnée</span>}
-              />
-            </div>
-          </Section>
-
-          {/* Informations colis */}
-          <Section
-            icon={<Package className="h-5 w-5" strokeWidth={2} />}
-            title="Informations du colis"
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <InfoCard
-                label="Colis"
-                value={envoyer?.colis || "Non renseigné"}
-              />
-
-              <InfoCard
-                label="Envoyeur"
-                value={envoyer?.nomEnvoyeur || "Non renseigné"}
-              />
-
-              <InfoCard
-                label="Récepteur"
-                value={envoyer?.nomRecepteur || "Non renseigné"}
-              />
-
-              <InfoCard
-                label="Contact"
-                value={envoyer?.contactRecepteur || "Non renseigné"}
-              />
-            </div>
-          </Section>
-
-          {/* Informations transport */}
-          <Section
-            icon={<Truck className="h-5 w-5" strokeWidth={2} />}
-            title="Informations transport"
-          >
-            {voiture ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <InfoCard label="Véhicule" value={voiture.design} />
-
-                {itineraire && (
-                  <>
-                    <InfoCard
-                      label="Itinéraire"
-                      value={itineraire.codeit}
-                      emphasis
-                    />
-
-                    <InfoCard
-                      label="Trajet"
-                      value={
-                        <span className="flex items-center gap-1 text-sm">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          {itineraire.villedep} → {itineraire.villearr}
-                        </span>
-                      }
-                    />
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="alert alert-warning">
-                <AlertTriangle className="h-5 w-5" strokeWidth={2} />
-
-                <span>Aucune information de transport disponible.</span>
-              </div>
-            )}
-          </Section>
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-base-300 px-6 py-4 flex justify-end bg-base-200/50">
-          <button type="button" className="btn btn-primary" onClick={onClose}>
             Fermer
           </button>
         </div>
       </div>
 
-      {/* Backdrop */}
+      {/* BACKDROP */}
       <form method="dialog" className="modal-backdrop">
-        <button type="button" onClick={onClose} aria-label="Fermer">
-          <X className="h-4 w-4" />
-        </button>
+        <button type="button" onClick={onClose} aria-label="Fermer" />
       </form>
     </dialog>
   );

@@ -1,4 +1,4 @@
-// src/AppRoutes.tsx
+// src/routes/AppRoutes.tsx
 
 import { Routes, Route } from "react-router-dom";
 
@@ -27,8 +27,6 @@ import Voitures from "../pages/Voitures/Voitures";
 // ==========================================
 
 import Envois from "../pages/Envois/Envois";
-import EnvoiForm from "../pages/Envois/EnvoiForm";
-import EnvoiDetails from "../pages/Envois/EnvoiDetails";
 
 // ==========================================
 // RECEPTIONS
@@ -49,7 +47,7 @@ import RecetteParVoiture from "../pages/Rapports/RecetteParVoiture";
 import RecetteParItineraire from "../pages/Rapports/RecetteParItineraire";
 
 // ==========================================
-// ROUTES PRINCIPALES
+// ROUTES
 // ==========================================
 
 function AppRoutes() {
@@ -83,21 +81,10 @@ function AppRoutes() {
 
         {/* =========================================
             ENVOIS
+            /envois
         ========================================= */}
 
-        <Route path="envois">
-          {/* /envois */}
-          <Route index element={<Envois />} />
-
-          {/* /envois/nouveau */}
-          <Route path="nouveau" element={<EnvoiForm />} />
-
-          {/* /envois/:id */}
-          <Route path=":id" element={<EnvoiDetails />} />
-
-          {/* /envois/:id/modifier */}
-          <Route path=":id/modifier" element={<EnvoiForm />} />
-        </Route>
+        <Route path="envois" element={<Envois />} />
 
         {/* =========================================
             RECEPTIONS
@@ -119,6 +106,7 @@ function AppRoutes() {
 
         {/* =========================================
             RAPPORTS
+            /rapports
         ========================================= */}
 
         <Route path="rapports" element={<Rapports />}>

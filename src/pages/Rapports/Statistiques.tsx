@@ -12,8 +12,25 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import {
+  BarChart3,
+  Package,
+  PackageCheck,
+  Truck,
+  Wallet,
+  TrendingUp,
+  AlertTriangle,
+  Loader2,
+  CheckCircle2,
+  Coins,
+  PieChart as PieIcon,
+} from "lucide-react";
 
 import { rapportService } from "../../services/rapportService";
+
+// ======================================================
+// INTERFACE
+// ======================================================
 
 interface StatistiquesData {
   totalEnvois: number;
@@ -22,20 +39,35 @@ interface StatistiquesData {
   recetteTotale: number;
 }
 
+// Couleurs harmonieuses pour le graphique circulaire
+const PIE_COLORS = ["#10b981", "#f59e0b"]; // Émeraude (Réceptions), Ambre (En transit)
+
+// ======================================================
+// COMPOSANT PRINCIPAL
+// ======================================================
+
 const Statistiques: React.FC = () => {
   const [data, setData] = useState<StatistiquesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ======================================================
+  // CHARGER LES STATISTIQUES
+  // ======================================================
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await rapportService.getStatistiques();
+        setLoading(true);
+        setError(null);
 
+        const result = await rapportService.getStatistiques();
         setData(result);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Erreur inconnue"
+          err instanceof Error
+            ? err.message
+            : "Erreur lors du chargement des statistiques.",
         );
       } finally {
         setLoading(false);
@@ -45,47 +77,55 @@ const Statistiques: React.FC = () => {
     fetchData();
   }, []);
 
-  // ==========================================
-  // CHARGEMENT
-  // ==========================================
+  // ======================================================
+  // ÉTAT DE CHARGEMENT
+  // ======================================================
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-10">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
+      <div className="flex min-h-[380px] flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="text-sm font-medium text-slate-500">
+          Calcul des statistiques générales...
+        </p>
       </div>
     );
   }
 
-  // ==========================================
-  // ERREUR
-  // ==========================================
+  // ======================================================
+  // ÉTAT D'ERREUR
+  // ======================================================
 
   if (error) {
     return (
-      <div className="alert alert-error shadow-lg">
-        <span>
-          <strong>Erreur :</strong> {error}
+      <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700 shadow-xs">
+        <AlertTriangle className="h-6 w-6 shrink-0 text-red-500" />
+        <div>
+          <h4 className="text-sm font-bold">Erreur de chargement</h4>
+          <p className="text-xs text-red-600 mt-0.5">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ======================================================
+  // AUCUNE DONNÉE
+  // ======================================================
+
+  if (!data) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-800 shadow-xs">
+        <AlertTriangle className="h-6 w-6 shrink-0 text-amber-600" />
+        <span className="text-sm font-medium">
+          Aucune donnée statistique disponible pour le moment.
         </span>
       </div>
     );
   }
 
-  // ==========================================
-  // AUCUNE DONNÉE
-  // ==========================================
-
-  if (!data) {
-    return (
-      <div className="alert alert-warning shadow-lg">
-        <span>Aucune donnée disponible.</span>
-      </div>
-    );
-  }
-
-  // ==========================================
-  // DONNÉES GRAPHIQUE BARRES
-  // ==========================================
+  // ======================================================
+  // DONNÉES DES GRAPHIQUES
+  // ======================================================
 
   const barData = [
     {
@@ -102,366 +142,303 @@ const Statistiques: React.FC = () => {
     },
   ];
 
-  // ==========================================
-  // DONNÉES GRAPHIQUE CIRCULAIRE
-  // ==========================================
-
   const pieData = [
     {
-      name: "Réceptions",
+      name: "Réceptions effectuées",
       value: data.totalReceptions,
     },
     {
-      name: "En transit",
+      name: "Colis en transit",
       value: data.colisEnTransit,
     },
   ];
 
-  // ==========================================
-  // INTERFACE
-  // ==========================================
-
   return (
-    <div className="w-full px-6 pb-6 pt-0 overflow-x-hidden">
+    <div className="space-y-6">
+      {/* ==================================================
+          1. HEADER (BANNIÈRE MODERNE)
+      ================================================== */}
+      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:p-6">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner">
+            <BarChart3 className="h-6 w-6" strokeWidth={2} />
+          </div>
 
-      {/* ==========================================
-          EN-TÊTE
-      ========================================== */}
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Statistiques générales
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
+              Vue globale de l'activité des envois, des réceptions et des flux
+              financiers
+            </p>
+          </div>
+        </div>
 
-      <div className="mb-6 mt-0">
-        <h2 className="text-2xl font-bold">
-          Statistiques générales
-        </h2>
-
-        <p className="text-base-content/60 mt-1">
-          Vue globale de l'activité des envois et des recettes.
-        </p>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            Métriques consolidées
+          </span>
+        </div>
       </div>
 
-      {/* ==========================================
-          CARTES STATISTIQUES
-      ========================================== */}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-
+      {/* ==================================================
+          2. CARTES STATISTIQUES (4 KPI CARDS)
+      ================================================== */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* TOTAL ENVOIS */}
-
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-          <div className="card-body">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-                <p className="text-sm text-base-content/60">
-                  Total envois
-                </p>
-
-                <p className="text-3xl font-bold mt-2">
-                  {data.totalEnvois}
-                </p>
-              </div>
-
-              <div className="rounded-full bg-primary/10 p-4 text-primary text-2xl">
-                📦
-              </div>
-
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total envois
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <Package className="h-5 w-5" />
             </div>
-
-            <div className="mt-4">
-              <span className="badge badge-primary">
-                Envois
-              </span>
-            </div>
-
           </div>
+          <p className="mt-2 font-mono text-3xl font-black text-slate-900">
+            {data.totalEnvois}
+          </p>
+          <span className="mt-1 block text-xs text-slate-400">
+            Colis expédiés
+          </span>
         </div>
 
         {/* TOTAL RÉCEPTIONS */}
-
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-          <div className="card-body">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-                <p className="text-sm text-base-content/60">
-                  Total réceptions
-                </p>
-
-                <p className="text-3xl font-bold mt-2">
-                  {data.totalReceptions}
-                </p>
-              </div>
-
-              <div className="rounded-full bg-info/10 p-4 text-info text-2xl">
-                📥
-              </div>
-
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total réceptions
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <PackageCheck className="h-5 w-5" />
             </div>
-
-            <div className="mt-4">
-              <span className="badge badge-info">
-                Réceptions
-              </span>
-            </div>
-
           </div>
+          <p className="mt-2 font-mono text-3xl font-black text-blue-600">
+            {data.totalReceptions}
+          </p>
+          <span className="mt-1 block text-xs text-slate-400">
+            Colis réceptionnés
+          </span>
         </div>
 
         {/* COLIS EN TRANSIT */}
-
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-          <div className="card-body">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-                <p className="text-sm text-base-content/60">
-                  Colis en transit
-                </p>
-
-                <p className="text-3xl font-bold mt-2">
-                  {data.colisEnTransit}
-                </p>
-              </div>
-
-              <div className="rounded-full bg-warning/10 p-4 text-warning text-2xl">
-                🚚
-              </div>
-
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Colis en transit
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+              <Truck className="h-5 w-5" />
             </div>
-
-            <div className="mt-4">
-              <span className="badge badge-warning">
-                En transit
-              </span>
-            </div>
-
           </div>
+          <p className="mt-2 font-mono text-3xl font-black text-amber-600">
+            {data.colisEnTransit}
+          </p>
+          <span className="mt-1 block text-xs text-slate-400">
+            En cours d'acheminement
+          </span>
         </div>
 
         {/* RECETTE TOTALE */}
-
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-          <div className="card-body">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-                <p className="text-sm text-base-content/60">
-                  Recette totale
-                </p>
-
-                <p className="text-3xl font-bold mt-2">
-                  {data.recetteTotale.toLocaleString("fr-FR")} Ar
-                </p>
-              </div>
-
-              <div className="rounded-full bg-success/10 p-4 text-success text-2xl">
-                💰
-              </div>
-
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Recette totale
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <Wallet className="h-5 w-5" />
             </div>
-
-            <div className="mt-4">
-              <span className="badge badge-success">
-                Recette
-              </span>
-            </div>
-
           </div>
+          <p className="mt-2 font-mono text-2xl font-black text-emerald-600">
+            {data.recetteTotale.toLocaleString("fr-FR")} Ar
+          </p>
+          <span className="mt-1 block text-xs font-medium text-emerald-700/80">
+            Revenus globaux générés
+          </span>
         </div>
-
       </div>
 
-      {/* ==========================================
-          GRAPHIQUES
-      ========================================== */}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-
-        {/* ==========================================
-            GRAPHIQUE EN BARRES
-        ========================================== */}
-
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-
-          <div className="card-body">
-
-            <h3 className="card-title">
-              Activité des colis
-            </h3>
-
-            <p className="text-sm text-base-content/60">
-              Comparaison des envois, réceptions et colis en transit.
-            </p>
-
-            <div className="w-full h-80 mt-6 overflow-hidden">
-
-              <ResponsiveContainer width="100%" height="100%">
-
-                <BarChart data={barData}>
-
-                  <CartesianGrid strokeDasharray="3 3" />
-
-                  <XAxis dataKey="nom" />
-
-                  <YAxis />
-
-                  <Tooltip />
-
-                  <Bar
-                    dataKey="nombre"
-                    fill="currentColor"
-                    className="text-primary"
-                    radius={[8, 8, 0, 0]}
-                  />
-
-                </BarChart>
-
-              </ResponsiveContainer>
-
+      {/* ==================================================
+          3. GRAPHIQUES (BARRES & CAMEMBERT)
+      ================================================== */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* GRAPHIQUE EN BARRES */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <BarChart3 className="h-4 w-4" />
             </div>
-
-          </div>
-
-        </div>
-
-        {/* ==========================================
-            GRAPHIQUE CIRCULAIRE
-        ========================================== */}
-
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-
-          <div className="card-body">
-
-            <h3 className="card-title">
-              État des colis
-            </h3>
-
-            <p className="text-sm text-base-content/60">
-              Répartition entre les colis réceptionnés et ceux en transit.
-            </p>
-
-            <div className="w-full h-80 mt-6 overflow-hidden">
-
-              <ResponsiveContainer width="100%" height="100%">
-
-                <PieChart>
-
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={100}
-                    dataKey="value"
-                  >
-
-                    <Cell className="fill-info" />
-
-                    <Cell className="fill-warning" />
-
-                  </Pie>
-
-                  <Tooltip />
-
-                  <Legend />
-
-                </PieChart>
-
-              </ResponsiveContainer>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* ==========================================
-          RECETTE TOTALE
-      ========================================== */}
-
-      <div className="card bg-base-100 shadow-xl border border-base-200 mt-8">
-
-        <div className="card-body">
-
-          <h3 className="card-title">
-            💰 Recette totale
-          </h3>
-
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
             <div>
-
-              <p className="text-sm text-base-content/60">
-                Montant total généré par les envois
+              <h3 className="text-sm font-bold text-slate-900">
+                Activité des colis
+              </h3>
+              <p className="text-xs text-slate-400">
+                Comparatif des volumes : envois, réceptions et transits
               </p>
+            </div>
+          </div>
 
-              <p className="text-4xl font-bold text-success mt-2">
+          <div className="mt-4 h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={barData}
+                margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#f1f5f9"
+                />
+                <XAxis
+                  dataKey="nom"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#64748b" }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#64748b" }}
+                />
+                <Tooltip
+                  formatter={(val: any) => [`${val} colis`, "Nombre"]}
+                  contentStyle={{
+                    backgroundColor: "#1e293b",
+                    borderRadius: "12px",
+                    color: "#fff",
+                    fontSize: "12px",
+                    border: "none",
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                  }}
+                />
+                <Bar
+                  dataKey="nombre"
+                  fill="#4f46e5"
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={55}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* GRAPHIQUE CIRCULAIRE */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <PieIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                État d'avancement des flux
+              </h3>
+              <p className="text-xs text-slate-400">
+                Répartition des colis réceptionnés vs en cours d'acheminement
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={4}
+                  dataKey="value"
+                  label={({ name, percent }) =>
+                    `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                  }
+                  labelLine={false}
+                >
+                  {pieData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={PIE_COLORS[index % PIE_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(val: any) => [`${val} colis`, "Quantité"]}
+                  contentStyle={{
+                    backgroundColor: "#1e293b",
+                    borderRadius: "12px",
+                    color: "#fff",
+                    fontSize: "12px",
+                    border: "none",
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  wrapperStyle={{ paddingTop: "12px", fontSize: "12px" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================================================
+          4. BILAN FINANCIER & RÉSUMÉ
+      ================================================== */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3.5 text-slate-800">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <TrendingUp className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold">
+              Synthèse globale de l'activité
+            </h3>
+            <p className="text-xs text-slate-400">
+              Résumé consolidé des flux logistiques
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3.5 text-xs sm:text-sm text-slate-600">
+          <p className="leading-relaxed">
+            Le réseau enregistre actuellement un total de{" "}
+            <strong className="font-semibold text-slate-900">
+              {data.totalEnvois} envois
+            </strong>
+            , dont{" "}
+            <strong className="font-semibold text-emerald-600">
+              {data.totalReceptions} réceptions
+            </strong>{" "}
+            menées à terme avec succès.
+          </p>
+
+          <p className="leading-relaxed">
+            Actuellement,{" "}
+            <strong className="font-semibold text-amber-600">
+              {data.colisEnTransit} colis
+            </strong>{" "}
+            sont en cours d'acheminement (en transit) sur les différentes lignes
+            régulières.
+          </p>
+
+          <div className="flex items-center gap-3.5 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-4 text-emerald-900">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+              <Coins className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+                Recette totale consolidée
+              </p>
+              <p className="text-lg sm:text-xl font-black font-mono text-emerald-800">
                 {data.recetteTotale.toLocaleString("fr-FR")} Ar
               </p>
-
             </div>
-
-            <div className="badge badge-success badge-lg">
-              Recette
-            </div>
-
           </div>
-
         </div>
-
       </div>
-
-      {/* ==========================================
-          RÉSUMÉ
-      ========================================== */}
-
-      <div className="card bg-base-200 shadow-lg mt-8">
-
-        <div className="card-body">
-
-          <h3 className="card-title">
-            Résumé de l'activité
-          </h3>
-
-          <p className="text-base-content/70">
-
-            Le système compte{" "}
-            <strong>
-              {data.totalEnvois}
-            </strong>{" "}
-            envoi(s), dont{" "}
-            <strong>
-              {data.totalReceptions}
-            </strong>{" "}
-            réception(s) effectuée(s).
-
-          </p>
-
-          <p className="text-base-content/70">
-
-            <strong>
-              {data.colisEnTransit}
-            </strong>{" "}
-            colis sont actuellement en transit pour une recette totale de{" "}
-
-            <strong>
-              {data.recetteTotale.toLocaleString("fr-FR")} Ar
-            </strong>.
-
-          </p>
-
-        </div>
-
-      </div>
-
     </div>
   );
 };

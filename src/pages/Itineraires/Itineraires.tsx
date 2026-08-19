@@ -1,5 +1,23 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import type { ChangeEvent, FormEvent } from "react";
+import {
+  Route,
+  Plus,
+  Search,
+  X,
+  RotateCcw,
+  Eye,
+  Pencil,
+  Trash2,
+  MapPin,
+  ArrowRight,
+  Car,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  Compass,
+  Map,
+} from "lucide-react";
 
 import {
   getAllItineraires,
@@ -10,15 +28,20 @@ import {
   getItineraireWithVoitures,
 } from "../../services/itineraireApi";
 
-// ==========================================
-// TYPES
-// ==========================================
+// =========================================================
+// 1. TYPES & INTERFACES
+// =========================================================
+
+interface VoitureLiee {
+  idvoit: string;
+  design: string;
+}
 
 interface Itineraire {
   codeit: string;
   villedep: string;
   villearr: string;
-  voitures?: unknown[];
+  voitures?: VoitureLiee[];
 }
 
 interface FormItineraire {
@@ -31,119 +54,79 @@ interface DetailsItineraire {
   codeit: string;
   villedep: string;
   villearr: string;
-  voitures?: unknown[];
+  voitures?: VoitureLiee[];
 }
 
-type DialogType = "error" | "success" | "confirm" | "details" | null;
+// =========================================================
+// 2. COMPOSANT PRINCIPAL
+// =========================================================
 
-// ==========================================
-// COMPOSANT
-// ==========================================
-
-function Itineraires() {
-  // ==========================================
-  // STATES
-  // ==========================================
-
+export function Itineraires() {
   const [itineraires, setItineraires] = useState<Itineraire[]>([]);
-
   const [search, setSearch] = useState("");
-
   const [loading, setLoading] = useState(false);
 
+  // Modale d'ajout / édition
   const [showModal, setShowModal] = useState(false);
-
   const [editing, setEditing] = useState<Itineraire | null>(null);
-
   const [saving, setSaving] = useState(false);
 
-  const [deleting, setDeleting] = useState<string | null>(null);
-
-  // ==========================================
-  // STATES POUR LES DIALOGUES
-  // ==========================================
-
-  const [dialogType, setDialogType] = useState<DialogType>(null);
-
-  const [dialogMessage, setDialogMessage] = useState("");
-
-  const [dialogTitle, setDialogTitle] = useState("");
-
-  const [dialogCode, setDialogCode] = useState<string | null>(null);
-
+  // Modale de détails
   const [details, setDetails] = useState<DetailsItineraire | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // ==========================================
-  // FORMULAIRE
-  // ==========================================
+  // Modale de confirmation de suppression
+  const [itineraireToDelete, setItineraireToDelete] =
+    useState<Itineraire | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  // Messages d'alerte / Notification
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Formulaire
   const [form, setForm] = useState<FormItineraire>({
     codeit: "",
     villedep: "",
     villearr: "",
   });
 
-  // ==========================================
-  // FONCTIONS DIALOGUE
-  // ==========================================
-
-  const closeDialog = (): void => {
-    setDialogType(null);
-    setDialogMessage("");
-    setDialogTitle("");
-    setDialogCode(null);
-    setDetails(null);
-  };
-
-  const showError = (message: string): void => {
-    setDialogTitle("Erreur");
-    setDialogMessage(message);
-    setDialogType("error");
-  };
-
-  const showSuccess = (message: string): void => {
-    setDialogTitle("Succès");
-    setDialogMessage(message);
-    setDialogType("success");
+  const showNotification = (type: "success" | "error", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification((prev) => (prev?.message === message ? null : prev));
+    }, 4000);
   };
 
   // ==========================================
-  // CHARGER TOUS LES ITINÉRAIRES
-  // GET /api/itineraires
+  // Charger les itinéraires
   // ==========================================
 
   const loadItineraires = async (): Promise<void> => {
     try {
       setLoading(true);
-
       const data = await getAllItineraires();
-
-      setItineraires(data);
+      setItineraires(data || []);
     } catch (error) {
       console.error("Erreur chargement itinéraires :", error);
-
-      showError("Impossible de récupérer les itinéraires.");
+      showNotification("error", "Impossible de récupérer les itinéraires.");
     } finally {
       setLoading(false);
     }
   };
-
-  // ==========================================
-  // CHARGEMENT INITIAL
-  // ==========================================
 
   useEffect(() => {
     loadItineraires();
   }, []);
 
   // ==========================================
-  // RECHERCHE
-  // GET /api/itineraires/recherche?q=...
+  // Recherche
   // ==========================================
 
   const handleSearch = async (value: string): Promise<void> => {
     setSearch(value);
-
     const query = value.trim();
 
     if (!query) {
@@ -153,77 +136,52 @@ function Itineraires() {
 
     try {
       setLoading(true);
-
       const data = await rechercherItineraire(query);
-
-      setItineraires(data);
+      setItineraires(data || []);
     } catch (error) {
       console.error("Erreur recherche :", error);
-
-      showError("Erreur lors de la recherche.");
+      showNotification("error", "Erreur lors de la recherche.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
-  // ACTUALISER
-  // ==========================================
-
   const handleRefresh = async (): Promise<void> => {
     setSearch("");
-
     await loadItineraires();
   };
 
   // ==========================================
-  // OUVRIR MODAL AJOUT
+  // Gestion Modal Ajout / Modification
   // ==========================================
 
   const handleAdd = (): void => {
     setEditing(null);
-
     setForm({
       codeit: "",
       villedep: "",
       villearr: "",
     });
-
     setShowModal(true);
   };
 
-  // ==========================================
-  // OUVRIR MODAL MODIFICATION
-  // ==========================================
-
   const handleEdit = (itineraire: Itineraire): void => {
     setEditing(itineraire);
-
     setForm({
       codeit: itineraire.codeit,
       villedep: itineraire.villedep,
       villearr: itineraire.villearr,
     });
-
     setShowModal(true);
   };
 
-  // ==========================================
-  // CHANGEMENT INPUT
-  // ==========================================
-
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
-
-    setForm((previous) => ({
-      ...previous,
+    setForm((prev) => ({
+      ...prev,
       [name]: value,
     }));
   };
-
-  // ==========================================
-  // CRÉER / MODIFIER
-  // ==========================================
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -232,342 +190,438 @@ function Itineraires() {
       setSaving(true);
 
       if (editing) {
-        // ==================================
-        // MODIFICATION
-        // PUT /api/itineraires/:codeit
-        // ==================================
-
         await updateItineraire(editing.codeit, {
           villedep: form.villedep.trim(),
           villearr: form.villearr.trim(),
         });
       } else {
-        // ==================================
-        // CRÉATION
-        // POST /api/itineraires
-        // ==================================
-
         await createItineraire({
-          codeit: form.codeit.trim(),
+          codeit: form.codeit.trim().toUpperCase(),
           villedep: form.villedep.trim(),
           villearr: form.villearr.trim(),
         });
       }
 
       setShowModal(false);
-
       setEditing(null);
-
-      setForm({
-        codeit: "",
-        villedep: "",
-        villearr: "",
-      });
-
+      setForm({ codeit: "", villedep: "", villearr: "" });
       await loadItineraires();
 
-      showSuccess(
+      showNotification(
+        "success",
         editing
-          ? "L'itinéraire a été modifié avec succès."
-          : "L'itinéraire a été créé avec succès.",
+          ? `L'itinéraire ${editing.codeit} a été mis à jour avec succès.`
+          : `L'itinéraire ${form.codeit.toUpperCase()} a été créé avec succès.`,
       );
     } catch (error) {
       console.error("Erreur enregistrement :", error);
-
       const message =
         error instanceof Error
           ? error.message
           : "Erreur lors de l'enregistrement.";
-
-      showError(message);
+      showNotification("error", message);
     } finally {
       setSaving(false);
     }
   };
 
   // ==========================================
-  // OUVRIR DIALOGUE CONFIRMATION SUPPRESSION
-  // ==========================================
-
-  const handleDelete = (codeit: string): void => {
-    setDialogTitle("Confirmer la suppression");
-
-    setDialogMessage(`Voulez-vous vraiment supprimer l'itinéraire ${codeit} ?`);
-
-    setDialogCode(codeit);
-
-    setDialogType("confirm");
-  };
-
-  // ==========================================
-  // CONFIRMER SUPPRESSION
+  // Suppression sécurisée
   // ==========================================
 
   const confirmDelete = async (): Promise<void> => {
-    if (!dialogCode) {
-      return;
-    }
+    if (!itineraireToDelete) return;
 
-    const codeit = dialogCode;
-
-    closeDialog();
+    const codeit = itineraireToDelete.codeit;
 
     try {
-      setDeleting(codeit);
-
+      setDeleting(true);
       await deleteItineraire(codeit);
 
-      // Retirer directement de l'affichage
-      setItineraires((previous) =>
-        previous.filter((itineraire) => itineraire.codeit !== codeit),
-      );
+      setItineraires((prev) => prev.filter((it) => it.codeit !== codeit));
+      setItineraireToDelete(null);
 
-      showSuccess(`L'itinéraire ${codeit} a été supprimé avec succès.`);
+      showNotification(
+        "success",
+        `L'itinéraire ${codeit} a été supprimé avec succès.`,
+      );
     } catch (error) {
       console.error("Erreur suppression :", error);
-
       const message =
         error instanceof Error
           ? error.message
           : "Erreur lors de la suppression.";
-
-      showError(message);
+      showNotification("error", message);
     } finally {
-      setDeleting(null);
+      setDeleting(false);
     }
   };
 
   // ==========================================
-  // VOIR ITINÉRAIRE AVEC SES VOITURES
-  // GET /api/itineraires/:codeit/voitures
+  // Voir les détails avec véhicules
   // ==========================================
 
   const handleView = async (codeit: string): Promise<void> => {
     try {
+      setLoadingDetails(true);
       const data = await getItineraireWithVoitures(codeit);
-
-      console.log("Itinéraire :", data);
-
       setDetails(data);
-
-      setDialogTitle("Détails de l'itinéraire");
-
-      setDialogType("details");
     } catch (error) {
-      console.error("Erreur récupération :", error);
-
+      console.error("Erreur détails :", error);
       const message =
         error instanceof Error
           ? error.message
-          : "Impossible de récupérer les informations.";
-
-      showError(message);
+          : "Impossible de récupérer les détails de l'itinéraire.";
+      showNotification("error", message);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
-  // ==========================================
-  // INTERFACE
-  // ==========================================
+  // Statistiques calculées
+  const totalVilles = useMemo(() => {
+    const villes = new Set<string>();
+    itineraires.forEach((it) => {
+      if (it.villedep) villes.add(it.villedep.trim().toLowerCase());
+      if (it.villearr) villes.add(it.villearr.trim().toLowerCase());
+    });
+    return villes.size;
+  }, [itineraires]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      {/* ========================================
-          HEADER
-      ======================================== */}
+    <div className="w-full space-y-6 p-4 md:p-6">
+      {/* =====================================================
+          1. HEADER (BANNIÈRE MODERNE)
+      ====================================================== */}
+      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:p-6">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner">
+            <Route className="h-6 w-6" strokeWidth={2} />
+          </div>
 
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">Itinéraires</h1>
-
-          <p className="mt-1 text-slate-500">Gestion des itinéraires</p>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Gestion des itinéraires
+            </h1>
+            <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
+              Configuration des lignes de transport, axes et tronçons
+              logistiques
+            </p>
+          </div>
         </div>
 
-        <button
-          onClick={handleAdd}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
-        >
-          + Nouvel itinéraire
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition-all"
+          >
+            <Plus size={16} />
+            <span>Nouvel itinéraire</span>
+          </button>
+        </div>
       </div>
 
-      {/* ========================================
-          RECHERCHE
-      ======================================== */}
+      {/* =====================================================
+          2. NOTIFICATION / ALERTE
+      ====================================================== */}
+      {notification && (
+        <div
+          className={`flex items-center justify-between rounded-xl border p-4 shadow-xs transition-all ${
+            notification.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {notification.type === "success" ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+            )}
+            <span className="text-xs sm:text-sm font-medium">
+              {notification.message}
+            </span>
+          </div>
 
-      <div className="mb-5 flex gap-3">
-        <div className="flex-1">
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="cursor-pointer rounded-lg p-1 text-slate-500 hover:bg-black/5"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* =====================================================
+          3. STATISTIQUES EN RUBAN (3 KPI CARDS)
+      ====================================================== */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* TOTAL ITINÉRAIRES */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total Itinéraires
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <Route className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="mt-2 font-mono text-3xl font-black text-slate-900">
+            {itineraires.length}
+          </p>
+          <span className="mt-1 block text-xs text-slate-400">
+            Lignes régulières enregistrées
+          </span>
+        </div>
+
+        {/* VILLES RELIÉES */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Villes Connectées
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <MapPin className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="mt-2 font-mono text-3xl font-black text-blue-600">
+            {totalVilles}
+          </p>
+          <span className="mt-1 block text-xs text-slate-400">
+            Pôles urbains desservis
+          </span>
+        </div>
+
+        {/* COUVERTURE RÉSEAU */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Réseau National
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <Compass className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="mt-2 font-mono text-2xl sm:text-3xl font-black text-emerald-600">
+            100% Opérationnel
+          </p>
+          <span className="mt-1 block text-xs font-medium text-emerald-700/80">
+            Trafic fluide & disponible
+          </span>
+        </div>
+      </div>
+
+      {/* =====================================================
+          4. RECHERCHE & FILTRAGE
+      ====================================================== */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
+            placeholder="Rechercher par code (ex: IT001) ou ville..."
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Rechercher par code ou ville..."
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-xs sm:text-sm text-slate-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
           />
         </div>
 
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          🔄 Actualiser
-        </button>
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <RotateCcw
+              className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            <span>Actualiser</span>
+          </button>
+
+          <span className="text-xs text-slate-400">
+            <strong className="text-slate-700 font-semibold">
+              {itineraires.length}
+            </strong>{" "}
+            lignes
+          </span>
+        </div>
       </div>
 
-      {/* ========================================
-          TABLEAU
-      ======================================== */}
+      {/* =====================================================
+          5. CHARGEMENT
+      ====================================================== */}
+      {loading && itineraires.length === 0 && (
+        <div className="py-12 text-center flex flex-col items-center justify-center gap-2">
+          <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+          <p className="text-xs text-slate-500">
+            Chargement des itinéraires...
+          </p>
+        </div>
+      )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
-                Code
-              </th>
-
-              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
-                Ville de départ
-              </th>
-
-              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
-                Ville d'arrivée
-              </th>
-
-              <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">
-                Actions
-              </th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-slate-200">
-            {/* CHARGEMENT */}
-
-            {loading && (
+      {/* =====================================================
+          6. TABLEAU DES ITINÉRAIRES
+      ====================================================== */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
               <tr>
-                <td
-                  colSpan={4}
-                  className="px-6 py-10 text-center text-slate-500"
-                >
-                  Chargement...
-                </td>
+                <th className="px-6 py-4">Code Itinéraire</th>
+                <th className="px-6 py-4">Ville de départ</th>
+                <th className="px-6 py-4">Ville d'arrivée</th>
+                <th className="px-6 py-4">Schéma du Trajet</th>
+                <th className="px-6 py-4 text-center">Actions</th>
               </tr>
-            )}
+            </thead>
 
-            {/* AUCUN RÉSULTAT */}
-
-            {!loading && itineraires.length === 0 && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-6 py-10 text-center text-slate-500"
-                >
-                  Aucun itinéraire trouvé.
-                </td>
-              </tr>
-            )}
-
-            {/* LISTE */}
-
-            {!loading &&
-              itineraires.map((itineraire) => (
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {itineraires.map((itineraire) => (
                 <tr
                   key={itineraire.codeit}
-                  className="transition hover:bg-slate-50"
+                  className="hover:bg-slate-50/80 transition-colors"
                 >
-                  {/* CODE */}
-
-                  <td className="px-6 py-4 font-semibold text-slate-800">
-                    {itineraire.codeit}
+                  {/* CODE ITINÉRAIRE */}
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-mono font-bold text-blue-700 border border-blue-200/80">
+                      {itineraire.codeit}
+                    </span>
                   </td>
 
-                  {/* DÉPART */}
-
-                  <td className="px-6 py-4 text-slate-600">
-                    {itineraire.villedep}
+                  {/* VILLE DÉPART */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-blue-600 shrink-0" />
+                      <span className="font-semibold text-slate-900">
+                        {itineraire.villedep}
+                      </span>
+                    </div>
                   </td>
 
-                  {/* ARRIVÉE */}
+                  {/* VILLE ARRIVÉE */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span className="font-semibold text-slate-900">
+                        {itineraire.villearr}
+                      </span>
+                    </div>
+                  </td>
 
-                  <td className="px-6 py-4 text-slate-600">
-                    {itineraire.villearr}
+                  {/* VISUALISATION DU TRAJET */}
+                  <td className="px-6 py-4">
+                    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50/80 px-3 py-1.5 text-xs">
+                      <span className="font-medium text-slate-700">
+                        {itineraire.villedep}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 text-indigo-500" />
+                      <span className="font-medium text-slate-700">
+                        {itineraire.villearr}
+                      </span>
+                    </div>
                   </td>
 
                   {/* ACTIONS */}
-
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center gap-2">
-                      {/* VOIR */}
-
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {/* BOUTON VOIR */}
                       <button
+                        type="button"
                         onClick={() => handleView(itineraire.codeit)}
-                        className="rounded-lg bg-slate-100 px-3 py-2 transition hover:bg-slate-200"
-                        title="Voir les détails"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all"
+                        title="Voir les détails et véhicules"
                       >
-                        👁️
+                        <Eye size={13} />
+                        <span>Voir</span>
                       </button>
 
-                      {/* MODIFIER */}
-
+                      {/* BOUTON MODIFIER */}
                       <button
+                        type="button"
                         onClick={() => handleEdit(itineraire)}
-                        className="rounded-lg bg-blue-50 px-3 py-2 text-blue-600 transition hover:bg-blue-100"
-                        title="Modifier"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 border border-amber-200/80 hover:bg-amber-100 transition-colors"
+                        title="Modifier l'itinéraire"
                       >
-                        ✏️
+                        <Pencil size={13} />
+                        <span>Modifier</span>
                       </button>
 
-                      {/* SUPPRIMER */}
-
+                      {/* BOUTON SUPPRIMER */}
                       <button
-                        onClick={() => handleDelete(itineraire.codeit)}
-                        disabled={deleting === itineraire.codeit}
-                        className="rounded-lg bg-red-50 px-3 py-2 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        title="Supprimer"
+                        type="button"
+                        onClick={() => setItineraireToDelete(itineraire)}
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 border border-red-200/80 hover:bg-red-100 transition-colors"
+                        title="Supprimer l'itinéraire"
                       >
-                        {deleting === itineraire.codeit ? "..." : "🗑️"}
+                        <Trash2 size={13} />
+                        <span>Supprimer</span>
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-          </tbody>
-        </table>
+
+              {!loading && itineraires.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <Route className="h-10 w-10 mx-auto mb-2 text-slate-300" />
+                    <p className="font-semibold text-slate-600">
+                      Aucun itinéraire trouvé
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Aucune ligne de transport ne correspond à votre recherche.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* ========================================
-          MODAL AJOUT / MODIFICATION
-      ======================================== */}
-
+      {/* =========================================================================
+          7. MODALE AJOUT / MODIFICATION D'UN ITINÉRAIRE
+      ========================================================================== */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-            {/* HEADER */}
-
-            <div className="flex items-center justify-between border-b px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-800">
-                {editing ? "Modifier l'itinéraire" : "Nouvel itinéraire"}
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header modale */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-white">
+                  <Route size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">
+                    {editing
+                      ? `Modifier l'itinéraire ${editing.codeit}`
+                      : "Créer un nouvel itinéraire"}
+                  </h3>
+                  <p className="text-xs text-blue-100">
+                    Définissez le code et les villes de départ et d'arrivée
+                  </p>
+                </div>
+              </div>
 
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="text-xl text-slate-400 transition hover:text-slate-700"
+                className="cursor-pointer rounded-full p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
-            {/* FORMULAIRE */}
-
-            <form onSubmit={handleSubmit} className="space-y-5 p-6">
-              {/* CODE */}
-
+            {/* Formulaire */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Code Itinéraire */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Code itinéraire
+                <label className="mb-1 block text-xs font-bold text-slate-700">
+                  Code Itinéraire <span className="text-red-500">*</span>
                 </label>
-
                 <input
                   type="text"
                   name="codeit"
@@ -575,18 +629,21 @@ function Itineraires() {
                   onChange={handleChange}
                   disabled={editing !== null}
                   required
-                  placeholder="Ex : IT001"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                  placeholder="Ex : IT001, IT-TNR-TMV"
+                  className="w-full uppercase rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm font-mono font-bold text-slate-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
+                {editing && (
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Le code d'itinéraire est unique et ne peut pas être modifié.
+                  </p>
+                )}
               </div>
 
-              {/* VILLE DÉPART */}
-
+              {/* Ville de Départ */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Ville de départ
+                <label className="mb-1 block text-xs font-bold text-slate-700">
+                  Ville de départ <span className="text-red-500">*</span>
                 </label>
-
                 <input
                   type="text"
                   name="villedep"
@@ -594,36 +651,33 @@ function Itineraires() {
                   onChange={handleChange}
                   required
                   placeholder="Ex : Antananarivo"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
-              {/* VILLE ARRIVÉE */}
-
+              {/* Ville d'Arrivée */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Ville d'arrivée
+                <label className="mb-1 block text-xs font-bold text-slate-700">
+                  Ville d'arrivée <span className="text-red-500">*</span>
                 </label>
-
                 <input
                   type="text"
                   name="villearr"
                   value={form.villearr}
                   onChange={handleChange}
                   required
-                  placeholder="Ex : Toamasina"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="Ex : Toamasina, Mahajanga..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
-              {/* BOUTONS */}
-
-              <div className="flex justify-end gap-3 border-t pt-5">
+              {/* Boutons d'action */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
                   disabled={saving}
-                  className="rounded-lg border border-slate-300 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                  onClick={() => setShowModal(false)}
+                  className="cursor-pointer rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
                 >
                   Annuler
                 </button>
@@ -631,13 +685,18 @@ function Itineraires() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
                 >
-                  {saving
-                    ? "Enregistrement..."
-                    : editing
-                      ? "Modifier"
-                      : "Enregistrer"}
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Enregistrement...</span>
+                    </>
+                  ) : (
+                    <span>
+                      {editing ? "Mettre à jour" : "Enregistrer l'axe"}
+                    </span>
+                  )}
                 </button>
               </div>
             </form>
@@ -645,175 +704,187 @@ function Itineraires() {
         </div>
       )}
 
-      {/* ========================================
-          DIALOGUE
-      ======================================== */}
+      {/* =========================================================================
+          8. MODALE DÉTAILS D'UN ITINÉRAIRE & VOITURES ASSIGNÉES
+      ========================================================================== */}
+      {details && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-white">
+                  <Map size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">
+                    Détails de l'axe {details.codeit}
+                  </h3>
+                  <p className="text-xs text-blue-100">
+                    Informations du tronçon et véhicules
+                  </p>
+                </div>
+              </div>
 
-      {dialogType && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-            {/* ==============================
-                DIALOGUE ERREUR
-            ============================== */}
+              <button
+                type="button"
+                onClick={() => setDetails(null)}
+                className="cursor-pointer rounded-full p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-            {dialogType === "error" && (
-              <>
-                <div className="p-6">
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-100 text-xl">
-                      ❌
+            {/* Contenu */}
+            <div className="p-6 space-y-4">
+              {/* Carte Trajet */}
+              <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-blue-50/60 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">
+                        Départ
+                      </span>
+                      <p className="text-sm font-bold text-slate-800">
+                        {details.villedep}
+                      </p>
                     </div>
-
-                    <h2 className="text-xl font-bold text-slate-800">
-                      {dialogTitle}
-                    </h2>
                   </div>
 
-                  <p className="text-slate-600">{dialogMessage}</p>
-                </div>
+                  <ArrowRight className="h-4 w-4 text-indigo-500" />
 
-                <div className="flex justify-end border-t bg-slate-50 px-6 py-4">
-                  <button
-                    onClick={closeDialog}
-                    className="rounded-lg bg-red-600 px-5 py-2.5 font-medium text-white transition hover:bg-red-700"
-                  >
-                    Fermer
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* ==============================
-                DIALOGUE SUCCÈS
-            ============================== */}
-
-            {dialogType === "success" && (
-              <>
-                <div className="p-6">
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-xl">
-                      ✓
+                  <div className="flex items-center gap-2 text-right">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">
+                        Arrivée
+                      </span>
+                      <p className="text-sm font-bold text-slate-800">
+                        {details.villearr}
+                      </p>
                     </div>
-
-                    <h2 className="text-xl font-bold text-slate-800">
-                      {dialogTitle}
-                    </h2>
-                  </div>
-
-                  <p className="text-slate-600">{dialogMessage}</p>
-                </div>
-
-                <div className="flex justify-end border-t bg-slate-50 px-6 py-4">
-                  <button
-                    onClick={closeDialog}
-                    className="rounded-lg bg-green-600 px-5 py-2.5 font-medium text-white transition hover:bg-green-700"
-                  >
-                    OK
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* ==============================
-                DIALOGUE CONFIRMATION
-            ============================== */}
-
-            {dialogType === "confirm" && (
-              <>
-                <div className="p-6">
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-yellow-100 text-xl">
-                      ⚠️
-                    </div>
-
-                    <h2 className="text-xl font-bold text-slate-800">
-                      {dialogTitle}
-                    </h2>
-                  </div>
-
-                  <p className="text-slate-600">{dialogMessage}</p>
-                </div>
-
-                <div className="flex justify-end gap-3 border-t bg-slate-50 px-6 py-4">
-                  <button
-                    onClick={closeDialog}
-                    className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-medium text-slate-700 transition hover:bg-slate-100"
-                  >
-                    Annuler
-                  </button>
-
-                  <button
-                    onClick={confirmDelete}
-                    className="rounded-lg bg-red-600 px-5 py-2.5 font-medium text-white transition hover:bg-red-700"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* ==============================
-                DIALOGUE DÉTAILS
-            ============================== */}
-
-            {dialogType === "details" && details && (
-              <>
-                <div className="border-b px-6 py-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-xl">
-                      👁️
-                    </div>
-
-                    <h2 className="text-xl font-bold text-slate-800">
-                      {dialogTitle}
-                    </h2>
+                    <MapPin className="h-4 w-4 text-emerald-600" />
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-4 p-6">
-                  <div className="rounded-lg bg-slate-50 p-4">
-                    <p className="text-sm text-slate-500">Code itinéraire</p>
+              {/* Véhicules assignés */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <Car size={14} className="text-sky-600" />
+                    Voitures desservant la ligne
+                  </span>
+                  <span className="rounded-md bg-sky-100 px-2 py-0.5 text-sky-800 font-mono">
+                    {details.voitures?.length || 0} véhicule(s)
+                  </span>
+                </div>
 
-                    <p className="mt-1 font-semibold text-slate-800">
-                      {details.codeit}
+                <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-xl border border-slate-200 bg-slate-50/50 p-2">
+                  {details.voitures && details.voitures.length > 0 ? (
+                    details.voitures.map((v) => (
+                      <div
+                        key={v.idvoit}
+                        className="flex items-center justify-between p-2 text-xs"
+                      >
+                        <span className="font-mono font-bold text-slate-800">
+                          {v.idvoit}
+                        </span>
+                        <span className="text-slate-600">{v.design}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="p-3 text-center text-xs text-slate-400">
+                      Aucune voiture n'est actuellement affectée à cet
+                      itinéraire.
                     </p>
-                  </div>
-
-                  <div className="rounded-lg bg-slate-50 p-4">
-                    <p className="text-sm text-slate-500">Ville de départ</p>
-
-                    <p className="mt-1 font-semibold text-slate-800">
-                      {details.villedep}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg bg-slate-50 p-4">
-                    <p className="text-sm text-slate-500">Ville d'arrivée</p>
-
-                    <p className="mt-1 font-semibold text-slate-800">
-                      {details.villearr}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg bg-blue-50 p-4">
-                    <p className="text-sm text-blue-600">Nombre de voitures</p>
-
-                    <p className="mt-1 text-2xl font-bold text-blue-700">
-                      {details.voitures?.length || 0}
-                    </p>
-                  </div>
+                  )}
                 </div>
+              </div>
+            </div>
 
-                <div className="flex justify-end border-t bg-slate-50 px-6 py-4">
-                  <button
-                    onClick={closeDialog}
-                    className="rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white transition hover:bg-blue-700"
-                  >
-                    Fermer
-                  </button>
-                </div>
-              </>
-            )}
+            {/* Footer */}
+            <div className="flex justify-end border-t border-slate-100 bg-slate-50 px-6 py-3">
+              <button
+                type="button"
+                onClick={() => setDetails(null)}
+                className="cursor-pointer rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          9. BOÎTE DE DIALOGUE DE CONFIRMATION DE SUPPRESSION (MODAL SÉCURISÉ)
+      ========================================================================== */}
+      {itineraireToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Alerte icône et titre */}
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-slate-900">
+                  Supprimer l'itinéraire
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Êtes-vous sûr de vouloir supprimer cet itinéraire ? Cette
+                  action est irréversible.
+                </p>
+              </div>
+            </div>
+
+            {/* Récapitulatif */}
+            <div className="mt-4 rounded-xl bg-slate-50 p-3.5 border border-slate-200/80 text-xs space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Code itinéraire :</span>
+                <span className="font-mono font-bold text-blue-600">
+                  {itineraireToDelete.codeit}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Liaison :</span>
+                <span className="font-semibold text-slate-800">
+                  {itineraireToDelete.villedep} → {itineraireToDelete.villearr}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setItineraireToDelete(null)}
+                className="cursor-pointer rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={confirmDelete}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Suppression...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Supprimer définitivement</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
