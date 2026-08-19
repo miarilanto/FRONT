@@ -1,548 +1,15 @@
-// import React, { useEffect, useState } from "react";
-// import { Plus, Search, X, PackageCheck, CalendarCheck } from "lucide-react";
-
-// import { receptionService } from "../../services/receptionService";
-
-// import type { Reception } from "./types";
-
-// import ReceptionForm from "./ReceptionForm";
-// import ReceptionDetails from "./ReceptionDetails";
-
-// const Receptions: React.FC = () => {
-//   const [receptions, setReceptions] = useState<Reception[]>([]);
-
-//   const [loading, setLoading] = useState(true);
-
-//   const [error, setError] = useState<string | null>(null);
-
-//   const [search, setSearch] = useState("");
-
-//   const [selectedReception, setSelectedReception] = useState<Reception | null>(
-//     null,
-//   );
-
-//   // ==========================================
-//   // Charger toutes les réceptions
-//   // ==========================================
-
-//   const loadReceptions = async () => {
-//     try {
-//       setLoading(true);
-//       setError(null);
-
-//       const data = await receptionService.getAll();
-
-//       setReceptions(data);
-//     } catch (err) {
-//       setError(
-//         err instanceof Error
-//           ? err.message
-//           : "Impossible de récupérer les réceptions.",
-//       );
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // ==========================================
-//   // Chargement initial
-//   // ==========================================
-
-//   useEffect(() => {
-//     loadReceptions();
-//   }, []);
-
-//   // ==========================================
-//   // Recherche automatique
-//   // ==========================================
-
-//   useEffect(() => {
-//     // Ne pas lancer une recherche immédiatement
-//     // lorsque le composant vient d'être chargé.
-//     if (!search.trim()) {
-//       return;
-//     }
-
-//     const timer = setTimeout(async () => {
-//       const terme = search.trim();
-
-//       try {
-//         setLoading(true);
-//         setError(null);
-
-//         const data = await receptionService.rechercher(terme);
-
-//         setReceptions(data);
-//       } catch (err) {
-//         setError(
-//           err instanceof Error ? err.message : "Erreur lors de la recherche.",
-//         );
-//       } finally {
-//         setLoading(false);
-//       }
-//     }, 300);
-
-//     // Annuler le timer précédent si l'utilisateur
-//     // continue à écrire.
-//     return () => {
-//       clearTimeout(timer);
-//     };
-//   }, [search]);
-
-//   // ==========================================
-//   // Effacer recherche
-//   // ==========================================
-
-//   const clearSearch = () => {
-//     setSearch("");
-//     loadReceptions();
-//   };
-
-//   // ==========================================
-//   // Supprimer une réception
-//   // ==========================================
-
-//   const handleDelete = async (id: number) => {
-//     const confirmation = window.confirm(
-//       "Voulez-vous vraiment supprimer cette réception ?",
-//     );
-
-//     if (!confirmation) {
-//       return;
-//     }
-
-//     try {
-//       await receptionService.remove(id);
-
-//       setReceptions((previous) =>
-//         previous.filter((reception) => reception.idrecept !== id),
-//       );
-//     } catch (err) {
-//       setError(
-//         err instanceof Error ? err.message : "Erreur lors de la suppression.",
-//       );
-//     }
-//   };
-
-//   // ==========================================
-//   // Format date
-//   // ==========================================
-
-//   const formatDate = (date: string) => {
-//     const parsedDate = new Date(date);
-
-//     if (isNaN(parsedDate.getTime())) {
-//       return date;
-//     }
-
-//     return parsedDate.toLocaleDateString("fr-FR");
-//   };
-
-//   // ==========================================
-//   // Chargement initial
-//   // ==========================================
-
-//   if (loading && receptions.length === 0 && !search) {
-//     return (
-//       <div className="flex justify-center items-center min-h-[400px]">
-//         <div className="flex flex-col items-center gap-3">
-//           <span className="loading loading-spinner loading-lg text-primary"></span>
-
-//           <p className="text-base-content/60">Chargement des réceptions...</p>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="p-4 md:p-6">
-//       {/* ======================================
-//           HEADER
-//       ====================================== */}
-
-//       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-//         <div>
-//           <h1 className="text-3xl font-bold">Réceptions</h1>
-
-//           <p className="text-base-content/60 mt-1">
-//             Gestion des colis réceptionnés
-//           </p>
-//         </div>
-
-//         <button
-//           type="button"
-//           className="
-//             btn
-//             btn-primary
-//             gap-2
-//             shadow-md
-//             hover:shadow-lg
-//             transition-all
-//             duration-200
-//           "
-//           onClick={() =>
-//             document.getElementById("modal-ajout-reception")?.showModal()
-//           }
-//         >
-//           <Plus size={18} />
-//           Nouvelle réception
-//         </button>
-//       </div>
-
-//       {/* ======================================
-//           ERREUR
-//       ====================================== */}
-
-//       {error && (
-//         <div className="alert alert-error mb-6">
-//           <span>{error}</span>
-
-//           <button className="btn btn-sm" onClick={() => setError(null)}>
-//             Fermer
-//           </button>
-//         </div>
-//       )}
-
-//       {/* ======================================
-//           STATISTIQUES
-//       ====================================== */}
-
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-6">
-//         {/* Total réceptions */}
-
-//         <div className="card bg-base-100 shadow-md">
-//           <div className="card-body">
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <div className="text-sm text-base-content/60">
-//                   Total réceptions
-//                 </div>
-
-//                 <div className="text-3xl font-bold text-primary mt-1">
-//                   {receptions.length}
-//                 </div>
-
-//                 <div className="text-sm text-base-content/60 mt-1">
-//                   Réceptions enregistrées
-//                 </div>
-//               </div>
-
-//               <div className="p-3 rounded-full bg-primary/10">
-//                 <PackageCheck size={28} className="text-primary" />
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Réceptions aujourd'hui */}
-
-//         <div className="card bg-base-100 shadow-md">
-//           <div className="card-body">
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <div className="text-sm text-base-content/60">
-//                   Réceptions aujourd'hui
-//                 </div>
-
-//                 <div className="text-3xl font-bold text-success mt-1">
-//                   {
-//                     receptions.filter((reception) => {
-//                       const today = new Date().toDateString();
-
-//                       return (
-//                         new Date(reception.date_recept).toDateString() === today
-//                       );
-//                     }).length
-//                   }
-//                 </div>
-
-//                 <div className="text-sm text-base-content/60 mt-1">
-//                   Colis réceptionnés
-//                 </div>
-//               </div>
-
-//               <div className="p-3 rounded-full bg-success/10">
-//                 <CalendarCheck size={28} className="text-success" />
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* ======================================
-//           RECHERCHE AUTOMATIQUE
-//       ====================================== */}
-
-//       <div className="card bg-base-100 shadow-md mb-6">
-//         <div className="card-body">
-//           <div className="flex flex-col md:flex-row gap-3">
-//             {/* Champ de recherche */}
-
-//             <label className="input input-bordered flex flex-1 items-center gap-2">
-//               <Search size={18} className="text-base-content/60 shrink-0" />
-
-//               <input
-//                 type="text"
-//                 placeholder="Rechercher par ID, colis, envoyeur, récepteur, voiture..."
-//                 className="grow"
-//                 value={search}
-//                 onChange={(e) => setSearch(e.target.value)}
-//               />
-
-//               {/* Loading pendant la recherche */}
-
-//               {loading && search.trim() && (
-//                 <span className="loading loading-spinner loading-sm"></span>
-//               )}
-//             </label>
-
-//             {/* Effacer */}
-
-//             {search && (
-//               <button
-//                 type="button"
-//                 className="btn btn-ghost gap-2"
-//                 onClick={clearSearch}
-//               >
-//                 <X size={18} />
-//                 Effacer
-//               </button>
-//             )}
-//           </div>
-
-//           {/* Indication */}
-
-//           {search.trim() && (
-//             <div className="text-sm text-base-content/60 mt-2">
-//               Recherche pour :
-//               <span className="font-semibold ml-1">"{search}"</span>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-
-//       {/* ======================================
-//           TABLEAU
-//       ====================================== */}
-
-//       <div className="card bg-base-100 shadow-xl">
-//         <div className="card-body p-0">
-//           <div className="overflow-x-auto">
-//             <table className="table table-zebra">
-//               <thead>
-//                 <tr>
-//                   <th>ID</th>
-
-//                   <th>Envoi</th>
-
-//                   <th>Colis</th>
-
-//                   <th>Envoyeur</th>
-
-//                   <th>Récepteur</th>
-
-//                   <th>Voiture</th>
-
-//                   <th>Itinéraire</th>
-
-//                   <th>Date</th>
-
-//                   <th>Actions</th>
-//                 </tr>
-//               </thead>
-
-//               <tbody>
-//                 {receptions.length === 0 ? (
-//                   <tr>
-//                     <td colSpan={9} className="text-center py-12">
-//                       <div className="flex flex-col items-center gap-3">
-//                         <div className="text-5xl">📦</div>
-
-//                         <p className="font-semibold">Aucune réception</p>
-
-//                         <p className="text-sm text-base-content/60">
-//                           Aucune réception ne correspond à votre recherche.
-//                         </p>
-//                       </div>
-//                     </td>
-//                   </tr>
-//                 ) : (
-//                   receptions.map((reception) => {
-//                     const envoyer = reception.envoyer;
-
-//                     const voiture = envoyer?.voiture;
-
-//                     const itineraire = voiture?.itineraire;
-
-//                     return (
-//                       <tr key={reception.idrecept}>
-//                         {/* ID */}
-
-//                         <td>
-//                           <span className="badge badge-neutral">
-//                             #{reception.idrecept}
-//                           </span>
-//                         </td>
-
-//                         {/* ENVOI */}
-
-//                         <td>
-//                           <span className="badge badge-info badge-outline">
-//                             #{reception.idenvoi}
-//                           </span>
-//                         </td>
-
-//                         {/* COLIS */}
-
-//                         <td>
-//                           <span className="font-medium">
-//                             {envoyer?.colis || "-"}
-//                           </span>
-//                         </td>
-
-//                         {/* ENVOYEUR */}
-
-//                         <td>{envoyer?.nomEnvoyeur || "-"}</td>
-
-//                         {/* RECEPTEUR */}
-
-//                         <td>
-//                           <div>
-//                             <p className="font-medium">
-//                               {envoyer?.nomRecepteur || "-"}
-//                             </p>
-
-//                             {envoyer?.contactRecepteur && (
-//                               <p className="text-xs text-base-content/60">
-//                                 {envoyer.contactRecepteur}
-//                               </p>
-//                             )}
-//                           </div>
-//                         </td>
-
-//                         {/* VOITURE */}
-
-//                         <td>
-//                           {voiture ? (
-//                             <div>
-//                               <p className="font-semibold">{voiture.idvoit}</p>
-
-//                               <p className="text-xs text-base-content/60">
-//                                 {voiture.design}
-//                               </p>
-//                             </div>
-//                           ) : (
-//                             <span className="text-base-content/50">-</span>
-//                           )}
-//                         </td>
-
-//                         {/* ITINERAIRE */}
-
-//                         <td>
-//                           {itineraire ? (
-//                             <div>
-//                               <p className="font-semibold">
-//                                 {itineraire.codeit}
-//                               </p>
-
-//                               <p className="text-xs">
-//                                 {itineraire.villedep}
-
-//                                 {" → "}
-
-//                                 {itineraire.villearr}
-//                               </p>
-//                             </div>
-//                           ) : (
-//                             <span className="text-base-content/50">-</span>
-//                           )}
-//                         </td>
-
-//                         {/* DATE */}
-
-//                         <td>
-//                           <span className="whitespace-nowrap">
-//                             {formatDate(reception.date_recept)}
-//                           </span>
-//                         </td>
-
-//                         {/* ACTIONS */}
-
-//                         <td>
-//                           <div className="flex gap-2">
-//                             <button
-//                               type="button"
-//                               className="btn btn-sm btn-info"
-//                               onClick={() => setSelectedReception(reception)}
-//                             >
-//                               Voir
-//                             </button>
-
-//                             <button
-//                               type="button"
-//                               className="btn btn-sm btn-error"
-//                               onClick={() => handleDelete(reception.idrecept)}
-//                             >
-//                               Supprimer
-//                             </button>
-//                           </div>
-//                         </td>
-//                       </tr>
-//                     );
-//                   })
-//                 )}
-//               </tbody>
-//             </table>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* ======================================
-//           MODAL AJOUT
-//       ====================================== */}
-
-//       <dialog id="modal-ajout-reception" className="modal">
-//         <div className="modal-box">
-//           <h3 className="font-bold text-2xl mb-2">Nouvelle réception</h3>
-
-//           <p className="text-base-content/60 mb-6">
-//             Enregistrer la réception d'un colis.
-//           </p>
-
-//           <ReceptionForm
-//             onSuccess={() => {
-//               document.getElementById("modal-ajout-reception")?.close();
-
-//               // Recharger les données après ajout
-//               loadReceptions();
-//             }}
-//             onCancel={() => {
-//               document.getElementById("modal-ajout-reception")?.close();
-//             }}
-//           />
-//         </div>
-
-//         <form method="dialog" className="modal-backdrop">
-//           <button>close</button>
-//         </form>
-//       </dialog>
-
-//       {/* ======================================
-//           DETAILS
-//       ====================================== */}
-
-//       <ReceptionDetails
-//         reception={selectedReception}
-//         onClose={() => setSelectedReception(null)}
-//       />
-//     </div>
-//   );
-// };
-
-// export default Receptions;
-
 import React, { useEffect, useState } from "react";
-import { Plus, Search, X, PackageCheck, CalendarCheck } from "lucide-react";
+import {
+  Plus,
+  Search,
+  X,
+  PackageCheck,
+  CalendarCheck,
+  Trash2,
+  AlertTriangle,
+  Eye,
+  Loader2,
+} from "lucide-react";
 
 import { receptionService } from "../../services/receptionService";
 
@@ -553,22 +20,26 @@ import ReceptionDetails from "./ReceptionDetails";
 
 const Receptions: React.FC = () => {
   const [receptions, setReceptions] = useState<Reception[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
-
   const [search, setSearch] = useState("");
 
+  // Réception sélectionnée pour l'affichage en haut
   const [selectedReception, setSelectedReception] = useState<Reception | null>(
     null,
   );
 
+  // Réception en cours de suppression (contrôle de la boîte de dialogue)
+  const [receptionToDelete, setReceptionToDelete] = useState<Reception | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // ==========================================
-  // Charger toutes les réceptions
+  // Charger les réceptions
   // ==========================================
 
-  const loadReceptions = async () => {
+  const chargerReceptions = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -577,10 +48,12 @@ const Receptions: React.FC = () => {
 
       setReceptions(data);
     } catch (err) {
+      console.error(err);
+
       setError(
         err instanceof Error
           ? err.message
-          : "Impossible de récupérer les réceptions.",
+          : "Impossible de charger les réceptions.",
       );
     } finally {
       setLoading(false);
@@ -592,74 +65,69 @@ const Receptions: React.FC = () => {
   // ==========================================
 
   useEffect(() => {
-    loadReceptions();
+    chargerReceptions();
   }, []);
 
   // ==========================================
-  // Recherche automatique
+  // Recherche
   // ==========================================
 
-  useEffect(() => {
-    if (!search.trim()) {
-      return;
-    }
+  const rechercher = async (value: string) => {
+    setSearch(value);
 
-    const timer = setTimeout(async () => {
-      const terme = search.trim();
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const data = await receptionService.rechercher(terme);
-
-        setReceptions(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Erreur lors de la recherche.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [search]);
-
-  // ==========================================
-  // Effacer recherche
-  // ==========================================
-
-  const clearSearch = () => {
-    setSearch("");
-    loadReceptions();
-  };
-
-  // ==========================================
-  // Supprimer une réception
-  // ==========================================
-
-  const handleDelete = async (id: number) => {
-    const confirmation = window.confirm(
-      "Voulez-vous vraiment supprimer cette réception ?",
-    );
-
-    if (!confirmation) {
+    if (value.trim() === "") {
+      chargerReceptions();
       return;
     }
 
     try {
-      await receptionService.remove(id);
+      setError(null);
 
-      setReceptions((previous) =>
-        previous.filter((reception) => reception.idrecept !== id),
-      );
+      const data = await receptionService.rechercher(value);
+
+      setReceptions(data);
     } catch (err) {
+      console.error(err);
+
       setError(
-        err instanceof Error ? err.message : "Erreur lors de la suppression.",
+        err instanceof Error ? err.message : "Erreur lors de la recherche.",
       );
+    }
+  };
+
+  // ==========================================
+  // Confirmation de suppression
+  // ==========================================
+
+  const handleConfirmDelete = async () => {
+    if (!receptionToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      setError(null);
+
+      await receptionService.remove(receptionToDelete.idrecept);
+
+      // Si la réception supprimée était affichée en haut, on la ferme
+      if (selectedReception?.idrecept === receptionToDelete.idrecept) {
+        setSelectedReception(null);
+      }
+
+      // Fermer la modale de confirmation
+      setReceptionToDelete(null);
+
+      // Rafraîchir la liste
+      await chargerReceptions();
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de supprimer la réception.",
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -667,359 +135,453 @@ const Receptions: React.FC = () => {
   // Format date
   // ==========================================
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | Date) => {
     const parsedDate = new Date(date);
 
     if (isNaN(parsedDate.getTime())) {
-      return date;
+      return String(date);
     }
 
-    return parsedDate.toLocaleDateString("fr-FR");
+    return parsedDate.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   // ==========================================
-  // Chargement initial
+  // Nombre de réceptions aujourd'hui
   // ==========================================
 
-  if (loading && receptions.length === 0 && !search) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <span className="loading loading-spinner loading-lg text-primary" />
+  const receptionsAujourdHui = receptions.filter((reception) => {
+    const today = new Date().toDateString();
 
-          <p className="text-base-content/60">Chargement des réceptions...</p>
-        </div>
-      </div>
-    );
-  }
+    return new Date(reception.date_recept).toDateString() === today;
+  }).length;
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* ======================================
-          HEADER
+          1. HEADER
       ====================================== */}
 
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Réceptions</h1>
+          <h1 className="text-3xl font-bold text-slate-800">Réceptions</h1>
 
-          <p className="text-base-content/60 mt-1">
-            Gestion des colis réceptionnés
-          </p>
+          <p className="mt-1 text-slate-500">Gestion des colis réceptionnés.</p>
         </div>
 
         <button
           type="button"
-          className="
-            btn
-            btn-primary
-            gap-2
-            shadow-md
-            hover:shadow-lg
-            transition-all
-            duration-200
-          "
           onClick={() =>
-            document.getElementById("modal-ajout-reception")?.showModal()
+            (
+              document.getElementById(
+                "modal-ajout-reception",
+              ) as HTMLDialogElement
+            )?.showModal()
           }
+          className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-medium text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-all"
         >
           <Plus size={18} />
-          Nouvelle réception
+          <span>Ajouter une réception</span>
         </button>
       </div>
 
       {/* ======================================
-          ERREUR
+          2. MESSAGE D'ERREUR
       ====================================== */}
 
       {error && (
-        <div className="alert alert-error mb-6">
-          <span>{error}</span>
+        <div className="flex items-center justify-between rounded-xl bg-red-50 border border-red-200 p-4 text-red-700 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+            <span className="text-sm font-medium">{error}</span>
+          </div>
 
-          <button className="btn btn-sm" onClick={() => setError(null)}>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="cursor-pointer rounded-lg bg-red-200/80 px-3 py-1 text-xs font-semibold hover:bg-red-300 transition-colors"
+          >
             Fermer
           </button>
         </div>
       )}
 
       {/* ======================================
-          STATISTIQUES
+          3. STATISTIQUES
       ====================================== */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-6">
-        {/* Total réceptions */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* TOTAL */}
+        <div className="rounded-2xl bg-white p-5 shadow-xs border border-slate-200/80">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                Total réceptions
+              </p>
 
-        <div className="card bg-base-100 shadow-md">
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-base-content/60">
-                  Total réceptions
-                </div>
+              <p className="mt-1 text-3xl font-bold text-blue-600">
+                {receptions.length}
+              </p>
 
-                <div className="text-3xl font-bold text-primary mt-1">
-                  {receptions.length}
-                </div>
+              <p className="mt-1 text-xs text-slate-400">
+                Réceptions enregistrées
+              </p>
+            </div>
 
-                <div className="text-sm text-base-content/60 mt-1">
-                  Réceptions enregistrées
-                </div>
-              </div>
-
-              <div className="p-3 rounded-full bg-primary/10">
-                <PackageCheck size={28} className="text-primary" />
-              </div>
+            <div className="rounded-2xl bg-blue-50 p-3.5">
+              <PackageCheck size={26} className="text-blue-600" />
             </div>
           </div>
         </div>
 
-        {/* Réceptions aujourd'hui */}
+        {/* AUJOURD'HUI */}
+        <div className="rounded-2xl bg-white p-5 shadow-xs border border-slate-200/80">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                Réceptions aujourd'hui
+              </p>
 
-        <div className="card bg-base-100 shadow-md">
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-base-content/60">
-                  Réceptions aujourd'hui
-                </div>
+              <p className="mt-1 text-3xl font-bold text-emerald-600">
+                {receptionsAujourdHui}
+              </p>
 
-                <div className="text-3xl font-bold text-success mt-1">
-                  {
-                    receptions.filter((reception) => {
-                      const today = new Date().toDateString();
+              <p className="mt-1 text-xs text-slate-400">Colis réceptionnés</p>
+            </div>
 
-                      return (
-                        new Date(reception.date_recept).toDateString() === today
-                      );
-                    }).length
-                  }
-                </div>
-
-                <div className="text-sm text-base-content/60 mt-1">
-                  Colis réceptionnés
-                </div>
-              </div>
-
-              <div className="p-3 rounded-full bg-success/10">
-                <CalendarCheck size={28} className="text-success" />
-              </div>
+            <div className="rounded-2xl bg-emerald-50 p-3.5">
+              <CalendarCheck size={26} className="text-emerald-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* ======================================
-          RECHERCHE
+          4. DETAILS DE LA RECEPTION (EN HAUT DU TABLEAU)
       ====================================== */}
 
-      <div className="card bg-base-100 shadow-md mb-6">
-        <div className="card-body">
-          <div className="flex flex-col md:flex-row gap-3">
-            <label className="input input-bordered flex flex-1 items-center gap-2">
-              <Search size={18} className="text-base-content/60 shrink-0" />
-
-              <input
-                type="text"
-                placeholder="Rechercher par colis, envoyeur, récepteur, voiture..."
-                className="grow"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-
-              {loading && search.trim() && (
-                <span className="loading loading-spinner loading-sm" />
-              )}
-            </label>
-
-            {search && (
-              <button
-                type="button"
-                className="btn btn-ghost gap-2"
-                onClick={clearSearch}
-              >
-                <X size={18} />
-                Effacer
-              </button>
-            )}
-          </div>
-
-          {search.trim() && (
-            <div className="text-sm text-base-content/60 mt-2">
-              Recherche pour :
-              <span className="font-semibold ml-1">"{search}"</span>
-            </div>
-          )}
+      {selectedReception && (
+        <div className="transition-all duration-300">
+          <ReceptionDetails
+            reception={selectedReception}
+            onClose={() => setSelectedReception(null)}
+          />
         </div>
+      )}
+
+      {/* ======================================
+          5. RECHERCHE
+      ====================================== */}
+
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search
+            size={18}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+
+          <input
+            type="text"
+            placeholder="Rechercher par colis, envoyeur, récepteur, voiture..."
+            value={search}
+            onChange={(e) => rechercher(e.target.value)}
+            className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+          />
+        </div>
+
+        {search && (
+          <button
+            type="button"
+            onClick={() => rechercher("")}
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300 transition-colors"
+          >
+            <X size={18} />
+            Effacer
+          </button>
+        )}
       </div>
 
       {/* ======================================
-          TABLEAU
+          6. CHARGEMENT
       ====================================== */}
 
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body p-0">
+      {loading && (
+        <div className="py-4 text-center">
+          <p className="text-sm text-slate-500">Chargement des réceptions...</p>
+        </div>
+      )}
+
+      {/* ======================================
+          7. TABLEAU DES RÉCEPTIONS
+      ====================================== */}
+
+      {!loading && (
+        <div className="overflow-hidden rounded-2xl bg-white shadow-xs border border-slate-200/80">
           <div className="overflow-x-auto">
-            <table className="table table-zebra">
-              {/* HEAD */}
-
-              <thead>
+            <table className="w-full text-left text-sm">
+              {/* ================================
+                  HEADER TABLE
+              ================================= */}
+              <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 <tr>
-                  <th>Colis</th>
-                  <th>Envoyeur</th>
-                  <th>Récepteur</th>
-                  <th>Voiture</th>
-                  <th>Itinéraire</th>
-                  <th>Date</th>
-                  <th>Actions</th>
+                  <th className="px-6 py-4">Colis</th>
+                  <th className="px-6 py-4">Envoyeur</th>
+                  <th className="px-6 py-4">Récepteur</th>
+                  <th className="px-6 py-4">Voiture</th>
+                  <th className="px-6 py-4">Itinéraire</th>
+                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4 text-center">Actions</th>
                 </tr>
               </thead>
 
-              {/* BODY */}
+              {/* ================================
+                  BODY
+              ================================= */}
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {receptions.map((reception) => {
+                  const envoyer = reception.envoyer;
+                  const voiture = envoyer?.voiture;
+                  const itineraire = voiture?.itineraire;
+                  const isSelected =
+                    selectedReception?.idrecept === reception.idrecept;
 
-              <tbody>
-                {receptions.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="text-5xl">📦</div>
+                  return (
+                    <tr
+                      key={reception.idrecept}
+                      className={`transition-colors ${
+                        isSelected
+                          ? "bg-blue-50/70 font-medium"
+                          : "hover:bg-slate-50/80"
+                      }`}
+                    >
+                      {/* COLIS */}
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-slate-900">
+                          {envoyer?.colis || "-"}
+                        </span>
+                        <div className="text-xs font-mono text-slate-400">
+                          Réf #{reception.idrecept}
+                        </div>
+                      </td>
 
-                        <p className="font-semibold">Aucune réception</p>
+                      {/* ENVOYEUR */}
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-slate-800">
+                          {envoyer?.nomEnvoyeur || "-"}
+                        </div>
+                        {envoyer?.emailEnvoyeur && (
+                          <div className="text-xs text-slate-400">
+                            {envoyer.emailEnvoyeur}
+                          </div>
+                        )}
+                      </td>
 
-                        <p className="text-sm text-base-content/60">
-                          Aucune réception ne correspond à votre recherche.
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  receptions.map((reception) => {
-                    const envoyer = reception.envoyer;
+                      {/* RECEPTEUR */}
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-slate-800">
+                          {envoyer?.nomRecepteur || "-"}
+                        </div>
+                        {envoyer?.contactRecepteur && (
+                          <div className="text-xs text-slate-400 font-mono">
+                            {envoyer.contactRecepteur}
+                          </div>
+                        )}
+                      </td>
 
-                    const voiture = envoyer?.voiture;
+                      {/* VOITURE */}
+                      <td className="px-6 py-4">
+                        {voiture ? (
+                          <div className="font-medium text-slate-800">
+                            {voiture.design}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
 
-                    const itineraire = voiture?.itineraire;
-
-                    return (
-                      <tr key={reception.idrecept}>
-                        {/* COLIS */}
-
-                        <td>
-                          <span className="font-medium">
-                            {envoyer?.colis || "-"}
-                          </span>
-                        </td>
-
-                        {/* ENVOYEUR */}
-
-                        <td>{envoyer?.nomEnvoyeur || "-"}</td>
-
-                        {/* RECEPTEUR */}
-
-                        <td>
+                      {/* ITINERAIRE */}
+                      <td className="px-6 py-4">
+                        {itineraire ? (
                           <div>
-                            <p className="font-medium">
-                              {envoyer?.nomRecepteur || "-"}
-                            </p>
-
-                            {envoyer?.contactRecepteur && (
-                              <p className="text-xs text-base-content/60">
-                                {envoyer.contactRecepteur}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* VOITURE */}
-
-                        <td>
-                          {voiture ? (
-                            <div>
-                              <p className="font-semibold">{voiture.design}</p>
+                            <div className="font-medium text-slate-800">
+                              {itineraire.codeit}
                             </div>
-                          ) : (
-                            <span className="text-base-content/50">-</span>
-                          )}
-                        </td>
-
-                        {/* ITINERAIRE */}
-
-                        <td>
-                          {itineraire ? (
-                            <div>
-                              <p className="font-semibold">
-                                {itineraire.codeit}
-                              </p>
-
-                              <p className="text-xs">
-                                {itineraire.villedep}
-                                {" → "}
-                                {itineraire.villearr}
-                              </p>
+                            <div className="text-xs text-slate-500">
+                              {itineraire.villedep} {" → "}{" "}
+                              {itineraire.villearr}
                             </div>
-                          ) : (
-                            <span className="text-base-content/50">-</span>
-                          )}
-                        </td>
-
-                        {/* DATE */}
-
-                        <td>
-                          <span className="whitespace-nowrap">
-                            {formatDate(reception.date_recept)}
-                          </span>
-                        </td>
-
-                        {/* ACTIONS */}
-
-                        <td>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-info"
-                              onClick={() => setSelectedReception(reception)}
-                            >
-                              Voir
-                            </button>
-
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-error"
-                              onClick={() => handleDelete(reception.idrecept)}
-                            >
-                              Supprimer
-                            </button>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+
+                      {/* DATE */}
+                      <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                        {formatDate(reception.date_recept)}
+                      </td>
+
+                      {/* ACTIONS */}
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center gap-2">
+                          {/* BOUTON VOIR */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReception(reception)}
+                            className={`inline-flex cursor-pointer items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-all ${
+                              isSelected
+                                ? "bg-blue-600 text-white"
+                                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                            }`}
+                          >
+                            <Eye size={14} />
+                            <span>Voir</span>
+                          </button>
+
+                          {/* BOUTON SUPPRIMER (OUVRE LA BOÎTE DE DIALOGUE) */}
+                          <button
+                            type="button"
+                            onClick={() => setReceptionToDelete(reception)}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-200 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                            <span>Supprimer</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+
+            {/* AUCUNE RÉCEPTION */}
+            {receptions.length === 0 && (
+              <div className="p-12 text-center text-slate-500">
+                <div className="mb-3 text-4xl">📦</div>
+                <p className="font-semibold text-slate-700">
+                  Aucune réception trouvée
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Aucune réception ne correspond à vos données ou à votre
+                  recherche.
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* =========================================================================
+          8. BOÎTE DE DIALOGUE DE CONFIRMATION DE SUPPRESSION (MODAL SÉCURISÉ)
+      ========================================================================== */}
+
+      {receptionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Icône d'alerte et titre */}
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-slate-900">
+                  Confirmer la suppression
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Cette action est définitive et ne pourra pas être annulée.
+                </p>
+              </div>
+            </div>
+
+            {/* Détails du colis ciblé */}
+            <div className="mt-4 rounded-xl bg-slate-50 p-3.5 border border-slate-200/80 text-xs space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Réception :</span>
+                <span className="font-mono font-bold text-slate-800">
+                  #{receptionToDelete.idrecept}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Colis :</span>
+                <span className="font-semibold text-slate-800">
+                  {receptionToDelete.envoyer?.colis || "Non renseigné"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Récepteur :</span>
+                <span className="font-semibold text-slate-800">
+                  {receptionToDelete.envoyer?.nomRecepteur || "Non renseigné"}
+                </span>
+              </div>
+            </div>
+
+            {/* Boutons d'action */}
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setReceptionToDelete(null)}
+                className="cursor-pointer rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all disabled:opacity-50"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Suppression...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Supprimer définitivement</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ======================================
-          MODAL AJOUT
+          9. MODAL AJOUT RÉCEPTION
       ====================================== */}
 
       <dialog id="modal-ajout-reception" className="modal">
-        <div className="modal-box">
-          <h3 className="font-bold text-2xl mb-2">Nouvelle réception</h3>
+        <div className="modal-box max-w-3xl">
+          <h3 className="mb-2 text-2xl font-bold text-slate-800">
+            Ajouter une réception
+          </h3>
 
-          <p className="text-base-content/60 mb-6">
-            Enregistrer la réception d'un colis.
+          <p className="mb-6 text-sm text-slate-500">
+            Enregistrer la réception d'un colis envoyé.
           </p>
 
           <ReceptionForm
             onSuccess={() => {
-              document.getElementById("modal-ajout-reception")?.close();
-
-              loadReceptions();
+              (
+                document.getElementById(
+                  "modal-ajout-reception",
+                ) as HTMLDialogElement
+              )?.close();
+              chargerReceptions();
             }}
             onCancel={() => {
-              document.getElementById("modal-ajout-reception")?.close();
+              (
+                document.getElementById(
+                  "modal-ajout-reception",
+                ) as HTMLDialogElement
+              )?.close();
             }}
           />
         </div>
@@ -1028,15 +590,6 @@ const Receptions: React.FC = () => {
           <button>close</button>
         </form>
       </dialog>
-
-      {/* ======================================
-          DETAILS
-      ====================================== */}
-
-      <ReceptionDetails
-        reception={selectedReception}
-        onClose={() => setSelectedReception(null)}
-      />
     </div>
   );
 };
